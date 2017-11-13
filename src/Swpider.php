@@ -15,6 +15,15 @@ class Swpider extends Command
     protected $logger;
     protected $verbosityLevelMap;
     protected $job;
+    protected $spider;
+    protected $input;
+    protected $output;
+
+
+    protected $jobs = [
+        'test' => Spider::class,
+    ];
+
 
     protected function configure()
     {
@@ -30,8 +39,28 @@ class Swpider extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $this->job = $input->getArgument('job');
+        $this->input = $input;
+        $this->output = $output;
         $this->logger = new ConsoleLogger($output, $this->verbosityLevelMap);
+
+        $this->resolverJob();
+    }
+
+
+
+    protected function resolverJob()
+    {
+        $job = $this->input->getArgument('job');
+
+        if(! file_exists($job)){
+            $this->logger->error("file $job not found!");
+            exit(1);
+        }
+
+
+
+
+
     }
 
 

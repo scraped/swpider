@@ -6,9 +6,9 @@ require_once __DIR__ . '/vendor/autoload.php';
 use Swpider\Swpider;
 use Symfony\Component\Console\Application;
 
+define('ROOT_PATH', __DIR__);
 
-//$swpider = new Swpider();
-//$swpider->test();
+
 
 $swpider = new Application();
 $swpider->add(new Swpider);

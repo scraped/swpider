@@ -22,11 +22,19 @@ class Database
     }
 
 
-    protected static function db()
+    public static function db()
     {
         return self::$_db;
     }
 
 
+    public static function __callStatic($name, $arguments)
+    {
+        if(isset(self::$_db) && method_exists(self::$_db, $name)){
+            return call_user_func_array([self::$_db, $name], $arguments);
+        }
+
+        throw new \BadMethodCallException("class ".__CLASS__ ." static method $name unsupported");
+    }
 
 }

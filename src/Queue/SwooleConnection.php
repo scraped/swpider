@@ -103,7 +103,9 @@ class SwooleConnection
 
         $response = $socket->read();
 
-        $responseLine = $socket->getLine();
+        $responseData = explode(self::CRLF,$response);
+
+        $responseLine = $responseData[0];
         $responseName = preg_replace('#^(\S+).*$#s', '$1', $responseLine);
 
         if (isset(self::$_errorResponses[$responseName])) {
@@ -120,17 +122,7 @@ class SwooleConnection
         }
 
         if (in_array($responseName, self::$_dataResponses)) {
-            $dataLength = preg_replace('#^.*\b(\d+)$#', '$1', $responseLine);
-            $data = $socket->read($dataLength);
-
-            $crlf = $socket->read(self::CRLF_LENGTH);
-            if ($crlf !== self::CRLF) {
-                throw new ClientException(sprintf(
-                    'Expected %u bytes of CRLF after %u bytes of data',
-                    self::CRLF_LENGTH,
-                    $dataLength
-                ));
-            }
+            $data = $responseData[1];
         } else {
             $data = null;
         }
