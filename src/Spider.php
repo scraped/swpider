@@ -4,6 +4,7 @@ namespace Swpider;
 
 use Swoole\Http\Client;
 use Swpider\Queue;
+use Swpider\Swpider;
 
 abstract class Spider
 {
@@ -15,7 +16,7 @@ abstract class Spider
     const FORMAT_JSONP = 3;
     const FORMAT_TEXT = 4;
 
-
+    public $cmd;
     //爬虫名
     public $name = 'swpider';
     //进程数
@@ -40,6 +41,12 @@ abstract class Spider
     protected $queue_port = 11300;
     protected $queue_timeout = 1;
     protected $queue_name = 'swpider';
+
+
+    public function __construct(Swpider $swpider)
+    {
+        $this->app = $swpider;
+    }
 
     //爬虫规则
     protected $rules = [

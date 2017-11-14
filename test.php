@@ -4,25 +4,28 @@ require_once __DIR__ . '/vendor/autoload.php';
 
 use Swpider\Queue;
 use Swpider\Database;
+use Symfony\Component\CssSelector\CssSelectorConverter;
+use Symfony\Component\DomCrawler\Crawler;
 
-Queue::connect([
-    'host'=>'127.0.0.1',
-    'port'=>'11300'
-]);
+$html = <<<'HTML'
+<!DOCTYPE html>
+<html>
+    <body>
+        <p class="message">Hello World!</p>
+        <p>Hello Crawler!</p>
+    </body>
+</html>
+HTML;
 
-Database::connect([
-    'host'=>'127.0.0.1',
-    'port'=>'3306',
-    'database'=>'luoo',
-    'username'  => 'root',
-    'password'  => '123456',
-    'charset'   => 'utf8',
-    'collation' => 'utf8_unicode_ci',
-    'prefix'    => '',
-    'timezone'  => '+00:00',
-    'strict'    => false,
-]);
+$crawler = new Crawler($html);
 
 
-$re = Queue::listTubes();
-var_dump($re);
+
+$css = new CssSelectorConverter();
+$xpath = $css->toXPath("p.message+p");
+
+
+$re = $crawler->filter('p.message+p');
+$re = $crawler->filterXPath("//p[@class='message']//@class");
+
+var_dump($re->text());

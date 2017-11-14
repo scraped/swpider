@@ -21,7 +21,7 @@ class Swpider extends Command
 
 
     protected $jobs = [
-        'test' => Spider::class,
+        'test' => Spiders\Test::class,
     ];
 
 
@@ -52,15 +52,24 @@ class Swpider extends Command
     {
         $job = $this->input->getArgument('job');
 
-        if(! file_exists($job)){
-            $this->logger->error("file $job not found!");
+        if(! isset($this->jobs[$job])){
+            $this->logger->error("job $job not found!");
             exit(1);
         }
 
+        $this->spider = new $this->jobs[$job]($this);
+
+        $this->startMaster();
+    }
 
 
+    protected function start()
+    {
+        //将索引地址写入请求队列
 
+        //开启爬虫子进程
 
+        //开始监控
     }
 
 
