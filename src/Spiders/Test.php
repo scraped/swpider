@@ -9,7 +9,7 @@ class Test extends Spider
 {
     public $name = 'luoo';
 
-    protected $start_points = [
+    protected $indexes = [
         'http://dev.luoo.net/music/'
     ];
 

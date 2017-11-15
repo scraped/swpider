@@ -11,6 +11,11 @@ class Queue
     const DEFAULT_PORT = 11300;
     const DEFAULT_TIMEOUT = 1;
 
+
+    const PRI_INDEX = 100;
+    const PRI_LIST = 200;
+    const PRI_CONTENT = 300;
+
     private static $_queue;
 
     protected static $config;
@@ -47,6 +52,25 @@ class Queue
 
         return $config;
     }
+
+    public static function addIndex($tube, $url)
+    {
+        $body = self::createJob([
+            'type' => 'index',
+            'url' => $url,
+        ]);
+
+        $pri = 100;
+
+        self::$_queue->putInTube($tube, $body, $pri);
+    }
+
+
+    protected static function createJob($data)
+    {
+        return json_encode($data);
+    }
+
 
 
     public static function __callStatic($name, $arguments)

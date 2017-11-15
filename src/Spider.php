@@ -45,7 +45,7 @@ abstract class Spider
 
     public function __construct(Swpider $swpider)
     {
-        $this->app = $swpider;
+        $this->cmd = $swpider;
     }
 
     //爬虫规则
@@ -69,7 +69,7 @@ abstract class Spider
         ]
     ];
 
-    protected $start_points = [];
+    protected $indexes = [];
 
 
     //连接队列
@@ -99,6 +99,16 @@ abstract class Spider
             'strict'    => $this->db_strict,
         ];
         Database::connect($config);
+    }
+
+    public function getIndexes()
+    {
+        return $this->indexes;
+    }
+
+    public function getRules()
+    {
+        return $this->rules;
     }
 
 

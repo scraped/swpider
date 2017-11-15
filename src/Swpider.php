@@ -19,6 +19,9 @@ class Swpider extends Command
     protected $input;
     protected $output;
 
+    //子进程
+    protected $mpid = 0;
+    protected $works = [];
 
     protected $jobs = [
         'test' => Spiders\Test::class,
@@ -59,17 +62,47 @@ class Swpider extends Command
 
         $this->spider = new $this->jobs[$job]($this);
 
-        $this->startMaster();
+        $this->initMaster();
+    }
+
+    //初始化主进程
+    protected function initMaster()
+    {
+        $this->spider->createQueue();
+        $this->spider->createDatabase();
+
+        swoole_set_process_name(sprintf('Spider:%s', $this->spider->name));
+        $this->mpid = posix_getpid();
+
+        //将索引地址写入请求队列
+        foreach($this->spider->getIndexes() as $url){
+            Queue::addIndex($this->spider->name,$url);
+        }
+
+        //开启爬虫子进程
+        for($i = 0; $i < $this->spider->task_num; $i++){
+            $this->createWorker();
+        }
+
+        //开始观察子进程
+        $this->createWatcher();
+
+        //开始子进程监控
+        $this->waitWorkers();
     }
 
 
-    protected function start()
+
+    protected  function createWorker($index = null)
     {
-        //将索引地址写入请求队列
+        $worker = new \swoole_process([$this, 'worker'], true);
+        $pid = $worker->start();
+    }
 
-        //开启爬虫子进程
 
-        //开始监控
+    protected function worker()
+    {
+
     }
 
 
