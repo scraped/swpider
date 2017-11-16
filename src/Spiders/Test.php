@@ -9,6 +9,12 @@ class Test extends Spider
 {
     public $name = 'luoo';
 
+    public $queue_name = 'luoo';
+
+    protected $db_name = 'swpider';
+    protected $db_user = 'root';
+    protected $db_password = '123456';
+
     protected $indexes = [
         'http://dev.luoo.net/music/'
     ];

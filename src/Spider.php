@@ -20,7 +20,9 @@ abstract class Spider
     //爬虫名
     public $name = 'swpider';
     //进程数
-    protected $task_num = 1;
+    public $task_num = 1;
+
+
 
     //数据库设置
     protected $db;
@@ -76,6 +78,7 @@ abstract class Spider
     public  function createQueue()
     {
         $config = [
+            'name' => isset($this->queue_name) ? $this->queue_name : $this->name,
             'host' => $this->queue_host,
             'port' => $this->queue_port,
             'timeout' => $this->queue_timeout,

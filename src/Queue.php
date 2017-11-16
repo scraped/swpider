@@ -3,6 +3,7 @@
 namespace Swpider;
 
 use Illuminate\Support\Arr;
+use Pheanstalk\Job;
 
 class Queue
 {
@@ -18,6 +19,7 @@ class Queue
 
     private static $_queue;
 
+
     protected static $config;
 
 
@@ -29,6 +31,12 @@ class Queue
 
         self::$config = $config ? : self::defaultConfig();
         self::$_queue = new Queue\SwooleBeanstalk(self::$config['host'], self::$config['port'], Arr::get($config,'timeout', self::DEFAULT_TIMEOUT));
+
+        if(isset($config['name'])){
+            self::$_queue->watchOnly($config['name']);
+            self::$_queue->useTube($config['name']);
+        }
+
     }
 
 
@@ -53,24 +61,83 @@ class Queue
         return $config;
     }
 
-    public static function addIndex($tube, $url)
+    public static function addIndex($url)
     {
-        $body = self::createJob([
+        $body = self::encodeData([
             'type' => 'index',
             'url' => $url,
         ]);
 
         $pri = 100;
 
-        self::$_queue->putInTube($tube, $body, $pri);
+        self::queue()->put($body, $pri);
+    }
+
+    public static function addUrl($url)
+    {
+        $body = self::encodeData([
+            'type' => 'url',
+            'url' => $url,
+        ]);
+
+        $pri = 200;
+
+        self::queue()->put($body, $pri);
     }
 
 
-    protected static function createJob($data)
+    public static function getUrl()
+    {
+        $job = self::queue()->reserve();
+
+        if($job instanceof Job){
+            return self::decodeJob($job);
+        }else{
+            return $job;
+        }
+    }
+
+    public static function releaseUrl($obj)
+    {
+        self::queue()->release(self::encodeJob($obj));
+    }
+
+    public static function deleteUrl($obj)
+    {
+        self::queue()->delete(self::encodeJob($obj));
+    }
+
+
+    protected static function encodeData($data)
     {
         return json_encode($data);
     }
 
+    protected static function decodeData($data)
+    {
+        return json_decode($data, true);
+    }
+
+
+    protected static function encodeJob($obj)
+    {
+        if(!isset($obj['_id'])){
+            return false;
+        }
+
+        $id = $obj['_id'];
+        unset($obj['_id']);
+
+        return new Job($id, self::encodeData($obj));
+    }
+
+    protected static function decodeJob($job)
+    {
+        $data = self::decodeData($job->getData());
+        $data['_id'] = $job->getId();
+
+        return $data;
+    }
 
 
     public static function __callStatic($name, $arguments)

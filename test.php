@@ -6,6 +6,12 @@ use Swpider\Queue;
 use Swpider\Database;
 use Symfony\Component\CssSelector\CssSelectorConverter;
 use Symfony\Component\DomCrawler\Crawler;
+use Swpider\Request;
+
+
+Request::send('get','http://dev.luoo.net',[],function($err, $client){
+    var_dump($client->body);
+});
 
 //$html = <<<'HTML'
 //<!DOCTYPE html>
@@ -38,10 +44,17 @@ use Symfony\Component\DomCrawler\Crawler;
 //var_dump($re);
 
 
+class DB
+{
+    public static $name = 'db';
+}
+
+
+
 class Process
 {
     public $index = 0;
-    protected $_worker;
+    protected $_worker = [];
 
 
     public function __construct()
@@ -49,36 +62,43 @@ class Process
         echo 'from parent:';
         $this->showIndex();
         $this->createProcess();
+        //$this->out();
         $this->waitProcess();
         echo 'child exit!'.PHP_EOL;
         //$this->showIndex();
-        //$this->pipe();
     }
 
-    public function pipe()
+    public function out($worker = null)
     {
-        $data = $this->_worker->read();
-        echo 'Pipe read :'.PHP_EOL . $data . PHP_EOL;
-        swoole_event_exit();
+        while($data = $this->_worker[0]->read()){
+            echo 'Pipe read :'.PHP_EOL . $data . PHP_EOL;
+        }
+
+        //swoole_event_exit();
         //swoole_event_del($this->_worker->pipe);
     }
 
     public function createProcess()
     {
-        $worker = new swoole_process([$this, 'worker'], false, 2);
-        $worker->start();
+        for($i = 0 ; $i < 5; $i++){
+            $worker = new swoole_process([$this, 'worker'], false, 1);
+            $this->_worker[] = $i;
+            $worker->start();
+        }
 
-        $this->_worker = $worker;
-        swoole_event_add($this->_worker->pipe,[$this, 'pipe']);
+        foreach($this->_worker as $p){
+            //swoole_event_add($p->pipe,[$this, 'out']);
+        }
+
     }
 
     public function worker(swoole_process $work)
     {
-        $index = 1;
-        while($index < 5){
-            $work->write("I'm Children : " . $index++ . PHP_EOL);
-            sleep(1);
-        }
+        unset($this->_worker);
+        DB::$name = 'child';
+        echo "worker $work->pid" .PHP_EOL;
+        //var_dump($this->_worker);
+        var_dump(DB::$name);
     }
 
     public function showIndex()
@@ -88,10 +108,13 @@ class Process
 
     public function waitProcess()
     {
-        $ret = swoole_process::wait();
-        //var_dump($ret);
+        while($ret = swoole_process::wait()){
+            echo "worker ".$ret['pid']." exit".PHP_EOL;
+        }
+        //var_dump($this->_worker);
+        var_dump(DB::$name);
     }
 }
 
-new Process();
+//new Process();
 
