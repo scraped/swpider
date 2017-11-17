@@ -2,11 +2,13 @@
 
 namespace Swpider;
 
+use Illuminate\Support\Arr;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Logger\ConsoleLogger;
+use Symfony\Component\DomCrawler\Crawler;
 use Psr\Log\LogLevel;
 
 
@@ -44,7 +46,8 @@ class Swpider extends Command
     {
         $this->input = $input;
         $this->output = $output;
-        $this->logger = new ConsoleLogger($output, $this->verbosityLevelMap);
+        Log::init($output,$this->verbosityLevelMap);
+        //$this->logger = new ConsoleLogger($output, $this->verbosityLevelMap);
 
         $this->setupSpider();
     }
@@ -56,7 +59,7 @@ class Swpider extends Command
         $spider = $this->input->getArgument('spider');
 
         if(! isset($this->spiders[$spider])){
-            $this->logger->error("Spider $spider not found!");
+            Log::error("Spider $spider not found!");
             exit(1);
         }
 
@@ -68,8 +71,8 @@ class Swpider extends Command
     //初始化主进程
     protected function initMaster()
     {
-        $this->logger->info("master started!");
-        $this->spider->createQueue();
+        Log::info("master started!");
+        Queue::connect($this->spider->getQueueConfig());
 
         swoole_set_process_name(sprintf('Spider:%s', $this->spider->name));
         $this->mpid = posix_getpid();
@@ -108,9 +111,11 @@ class Swpider extends Command
         //清空子进程的进程数组
         unset($this->workers);
         //建立新的连接，避免多进程间相互抢占主进程的连接
-        $this->spider->createQueue();
+        Queue::connect($this->spider->getQueueConfig());
         //建立数据库连接
-        $this->spider->createDatabase();
+        Database::connect($this->spider->getDatabaseConfig());
+        //建立redis
+        Cache::connect($this->spider->getRedisConfig());
 
 
         //操作队列
@@ -123,8 +128,9 @@ class Swpider extends Command
     {
         //从队列取任务
         while($job = Queue::getUrl()){
-
+            //解析任务
             $this->resolverJob($job);
+
         }
     }
 
@@ -132,21 +138,101 @@ class Swpider extends Command
     //执行队列任务
     protected function resolverJob($job)
     {
-        $this->logger->info("Request url: {$job['url']}");
+        Log::alert("Requesting: {$job['url']}");
+
         Request::get($job['url'], [], function($err, $client) use ($job){
 
+            Info::info("Requested: {$job['url']}");
+
             if(isset($err)){
+                Info::error("error: {$job['url']}");
+                //请求失败，释放任务
                 Queue::releaseUrl($job);
                 throw $err;
             }
 
-            if($job['type'] == 'index'){
 
+            //解析网页内容
+            $rules = $this->spider->getRules();
+            foreach($rules['url'] as $name=>$option){
+                $regex = $option['regex'];
+                //解析可用链接
+                if(preg_match_all("#{$regex}#iu", $client->body, $matches)){
+                    foreach($matches[0] as $url){
+                        //检查是否可用链接
+                        if(! $this->isEnableUrl($url, $option['reentry'])){
+                            Log::info("disable url: $url");
+                            continue;
+                        }
+
+                        //加入队列
+                        Queue::addUrl($url, $name);
+                        //写入缓存
+                        Cache::setUrl($url,0);
+                    }
+                }
+            }
+
+            $response = [
+                'type' => $job['type']
+            ];
+
+
+            Log::info("{$job['type']}:".Arr::get($rules,$job['type'].'.fields', false));
+
+            //解析字段
+            if($fields = Arr::get($rules,$job['type'].'.fields', false)){
+                $crawler = new Crawler($client->body);
+                foreach($fields as $field){
+                    $rule = $rules['fields'][$field];
+
+                    $re = $crawler->filter($rule['selector']);
+                    $value_rule = Arr::get($rule, 'value', 'text');
+
+                    if(Arr::get($rule, 'multi', false)){
+                        $value = [];
+                        $re->each(function($node) use ($value_rule, &$value){
+                            $value[] = $this->getValue($value_rule,$node);
+                        });
+                    }else{
+                        $value = $this->getValue($value_rule,$re);
+                    }
+
+                    $response['data'][$field] = $value;
+                }
+
+                $this->spider->onResponse($client, $response);
             }
 
 
+
+            //移出队列
             Queue::deleteUrl($job);
+            //更新缓存
+            Cache::setUrl($job['url'], 1);
         });
+    }
+
+    protected function getValue($rule,Crawler $node)
+    {
+        if(strpos($rule, '@') === 0){
+            return $node->attr(substr($rule,1));
+        }
+
+        return $node->text();
+    }
+
+    //判断是否为可用的链接
+    protected function isEnableUrl($url, $reentry = false)
+    {
+        //不存在链接集合中，或者已过了重入时间间隔且已经请求过
+        $data = Cache::getUrl($url);
+
+        return ! $data ||
+            ( $reentry !== false
+                && $data['status'] !== 0
+                && time() - $data['last'] > $reentry );
+
     }
 
 
@@ -156,7 +242,7 @@ class Swpider extends Command
     {
         if(! \swoole_process::kill($this->mpid, 0)){
             $worker->exit(0);
-            $this->logger->notice("Master process exited! Process {$worker['pid']} quit now.");
+            Log::notice("Master process exited! Process {$worker['pid']} quit now.");
         }
     }
 

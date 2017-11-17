@@ -17,6 +17,9 @@ class Database
 
     public static function connect(array $config)
     {
+        if(isset(self::$_db)){
+            self::$_db->disconnect();
+        }
         $connector = new MySqlConnector();
         self::$_db = new MySqlConnection($connector->connect($config), $config['database'], $config['prefix'], $config);
     }

@@ -24,14 +24,21 @@ class Test extends Spider
             'title' => [
                 'type' => 'css',
                 'selector' => 'h1.vol > span.vol-title',
-                'value' => '@class',
+                'value' => 'text',
                 'multi' => false
             ]
         ],
         'url' => [
-            'name' => 'vol',
-            'regex' => "http://dev.luoo.net/tag/?p=\d+",
-            'fields' => ['title'],
+            'vol_list' => [
+                'regex' => "http:\/\/dev.luoo.net\/tag\/?p=\d+",
+                'reentry' => 86400,
+            ],
+            'vol' => [
+                'regex' => "http:\/\/dev.luoo.net\/vol\/index\/\d+",
+                'fields' => ['title'],
+                'reentry' => false,
+            ]
+
         ],
     ];
 

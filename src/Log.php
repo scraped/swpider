@@ -18,11 +18,21 @@ class Log
     CONST LINE_HEAD = "\r";
 
     private static $_logger;
+    private static $_output;
+    private static $_level;
 
-    private static function logger()
+    public static function init($output = null, $verbosityLevelMap = [])
+    {
+        self::$_output = $output ? : new ConsoleOutput(ConsoleOutput::VERBOSITY_DEBUG);
+        self::$_level = $verbosityLevelMap;
+        self::$_logger = new ConsoleLogger(self::$_output,self::$_level);
+    }
+
+
+    public static function logger()
     {
         if(is_null(self::$_logger)){
-            self::$_logger = new ConsoleLogger(new ConsoleOutput(ConsoleOutput::VERBOSITY_DEBUG));
+            self::init();
         }
 
         return self::$_logger;
@@ -30,12 +40,13 @@ class Log
 
 
 
-    public static function info($string)
+    public static function __callStatic($name, $arguments)
     {
-        self::logger()->info($string);
+        if(isset(self::$_logger) && method_exists(self::$_logger, $name)){
+            return call_user_func_array([self::$_logger, $name], $arguments);
+        }
+
+        throw new \BadMethodCallException("class ".__CLASS__ ." static method $name unsupported");
     }
-
-
-
 
 }

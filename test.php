@@ -7,17 +7,39 @@ use Swpider\Database;
 use Symfony\Component\CssSelector\CssSelectorConverter;
 use Symfony\Component\DomCrawler\Crawler;
 use Swpider\Request;
+use Swpider\Cache;
 
 
-Request::send('get','http://dev.luoo.net',[],function($err, $client){
-    var_dump($client->body);
-});
+function request()
+{
+    Request::send('get','http://dev.luoo.net/music',[],function($err, $client){
 
-//$html = <<<'HTML'
+        $regex = 'http:\/\/dev.luoo.net\/tag\/\?p=\d+';
+
+        $re = preg_match_all("#{$regex}#ui",$client->body,$matches);
+
+        var_dump($regex);
+
+
+    });
+}
+$i = 0;
+
+while($i < 5){
+    request();
+    $i++;
+    var_dump($i);
+
+}
+
+//$html = <<<HTML
 //<!DOCTYPE html>
 //<html>
 //    <body>
 //        <p class="message">Hello World!</p>
+//        <p>Hello Crawler!</p>
+//        <p>Hello Crawler!</p>
+//        <p>Hello Crawler!</p>
 //        <p>Hello Crawler!</p>
 //    </body>
 //</html>
@@ -31,10 +53,13 @@ Request::send('get','http://dev.luoo.net',[],function($err, $client){
 //$xpath = $css->toXPath("p.message+p");
 //
 //
-//$re = $crawler->filter('p.message+p');
-//$re = $crawler->filterXPath("//p[@class='message']//@class");
+//$re = $crawler->filter('p');
+////$re = $crawler->filterXPath("//p[@class='message']//@class");
+//$re->each(function($node){
+//    var_dump($node->text());
+//});
 //
-////var_dump($re->text());
+//die;
 //
 //
 //Queue::connect();
@@ -115,6 +140,20 @@ class Process
         var_dump(DB::$name);
     }
 }
+
+
+
+Cache::connect();
+
+
+Cache::hSet('h', 'key1', 'hello');
+$re = Cache::hExists('h1', 'key2');
+//$re = Redis::get('name');
+
+var_dump($re);
+
+
+
 
 //new Process();
 

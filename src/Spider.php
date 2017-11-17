@@ -45,6 +45,14 @@ abstract class Spider
     protected $queue_name = 'swpider';
 
 
+    //redis设置
+    protected $redis;
+    protected $redis_host = '127.0.0.1';
+    protected $redis_port = '6379';
+    protected $redis_prefix = '';
+    protected $redis_scheme = 'tcp';
+
+
     public function __construct(Swpider $swpider)
     {
         $this->cmd = $swpider;
@@ -75,7 +83,7 @@ abstract class Spider
 
 
     //连接队列
-    public  function createQueue()
+    public  function getQueueConfig()
     {
         $config = [
             'name' => isset($this->queue_name) ? $this->queue_name : $this->name,
@@ -83,11 +91,12 @@ abstract class Spider
             'port' => $this->queue_port,
             'timeout' => $this->queue_timeout,
         ];
-        Queue::connect($config);
+
+        return $config;
     }
 
     //连接数据库
-    public  function createDatabase()
+    public  function getDatabaseConfig()
     {
         $config = [
             'host'      => $this->db_host,
@@ -101,8 +110,24 @@ abstract class Spider
             'timezone'  => $this->db_timezone,
             'strict'    => $this->db_strict,
         ];
-        Database::connect($config);
+
+        return $config;
     }
+
+
+    public function getRedisConfig()
+    {
+        $config = [
+            'scheme' => $this->redis_scheme,
+            'host' => $this->redis_host,
+            'port' => $this->redis_port,
+            'prefix' => $this->redis_prefix ? : $this->name,
+        ];
+
+        return $config;
+    }
+
+
 
     public function getIndexes()
     {
@@ -127,9 +152,9 @@ abstract class Spider
         //
     }
 
-    public function onResponse(Client $client)
+    public function onResponse(Client $client, $data)
     {
-
+        var_dump($data);
     }
 
 

@@ -73,14 +73,14 @@ class Queue
         self::queue()->put($body, $pri);
     }
 
-    public static function addUrl($url)
+    public static function addUrl($url, $type)
     {
         $body = self::encodeData([
-            'type' => 'url',
+            'type' => $type,
             'url' => $url,
         ]);
 
-        $pri = 200;
+        $pri = 100;
 
         self::queue()->put($body, $pri);
     }
