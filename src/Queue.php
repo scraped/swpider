@@ -4,6 +4,7 @@ namespace Swpider;
 
 use Illuminate\Support\Arr;
 use Pheanstalk\Job;
+use Pheanstalk\Pheanstalk;
 
 class Queue
 {
@@ -30,7 +31,7 @@ class Queue
         }
 
         self::$config = $config ? : self::defaultConfig();
-        self::$_queue = new Queue\SwooleBeanstalk(self::$config['host'], self::$config['port'], Arr::get($config,'timeout', self::DEFAULT_TIMEOUT));
+        self::$_queue = new Pheanstalk(self::$config['host'], self::$config['port'], Arr::get($config,'timeout', self::DEFAULT_TIMEOUT));
 
         if(isset($config['name'])){
             self::$_queue->watchOnly($config['name']);

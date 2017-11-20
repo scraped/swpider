@@ -29,7 +29,7 @@ while($i < 5){
     request();
     $i++;
     var_dump($i);
-
+    sleep(1);
 }
 
 //$html = <<<HTML
@@ -143,14 +143,14 @@ class Process
 
 
 
-Cache::connect();
-
-
-Cache::hSet('h', 'key1', 'hello');
-$re = Cache::hExists('h1', 'key2');
-//$re = Redis::get('name');
-
-var_dump($re);
+//Cache::connect();
+//
+//
+//Cache::hSet('h', 'key1', 'hello');
+//$re = Cache::hExists('h1', 'key2');
+////$re = Redis::get('name');
+//
+//var_dump($re);
 
 
 

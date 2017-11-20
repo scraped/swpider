@@ -9,6 +9,8 @@ class Test extends Spider
 {
     public $name = 'luoo';
 
+    public $task_num = 10;
+
     public $queue_name = 'luoo';
 
     protected $db_name = 'swpider';
@@ -23,7 +25,7 @@ class Test extends Spider
         'fields' => [
             'title' => [
                 'type' => 'css',
-                'selector' => 'h1.vol > span.vol-title',
+                'selector' => 'h1.vol-name > span.vol-title',
                 'value' => 'text',
                 'multi' => false
             ]
@@ -36,7 +38,7 @@ class Test extends Spider
             'vol' => [
                 'regex' => "http:\/\/dev.luoo.net\/vol\/index\/\d+",
                 'fields' => ['title'],
-                'reentry' => false,
+                'reentry' => 86400,
             ]
 
         ],
@@ -46,6 +48,12 @@ class Test extends Spider
     public function onStart()
     {
         Log::info("Spider $this->name start at ".date("Y-m-d H:i:s"));
+    }
+
+
+    public function onResponse($response, $data)
+    {
+        var_dump($data);
     }
 
 }

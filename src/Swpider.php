@@ -2,6 +2,8 @@
 
 namespace Swpider;
 
+use GuzzleHttp\Client;
+use GuzzleHttp\Exception\ClientException;
 use Illuminate\Support\Arr;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -74,7 +76,7 @@ class Swpider extends Command
         Log::info("master started!");
         Queue::connect($this->spider->getQueueConfig());
 
-        swoole_set_process_name(sprintf('Spider:%s', $this->spider->name));
+        swoole_set_process_name(sprintf('Spider Master:%s', $this->spider->name));
         $this->mpid = posix_getpid();
 
         //将索引地址写入请求队列
@@ -110,6 +112,10 @@ class Swpider extends Command
         $this->spider->onStart();
         //清空子进程的进程数组
         unset($this->workers);
+
+        //进程命名
+        swoole_set_process_name(sprintf('Spider Pool:%s', $this->spider->name));
+
         //建立新的连接，避免多进程间相互抢占主进程的连接
         Queue::connect($this->spider->getQueueConfig());
         //建立数据库连接
@@ -138,79 +144,90 @@ class Swpider extends Command
     //执行队列任务
     protected function resolverJob($job)
     {
-        Log::alert("Requesting: {$job['url']}");
+        Log::info("Requesting: {$job['url']}");
 
-        Request::get($job['url'], [], function($err, $client) use ($job){
+        $client = new Client([
+            'time' => 2.0
+        ]);
 
-            Info::info("Requested: {$job['url']}");
-
-            if(isset($err)){
-                Info::error("error: {$job['url']}");
-                //请求失败，释放任务
-                Queue::releaseUrl($job);
-                throw $err;
+        try{
+            $response = $client->get($job['url']);
+        }catch(ClientException $e){
+            if($this->needRetry($e)){
+                return false;
             }
 
+            Queue::releaseUrl($job);
+            throw $e;
+        }
 
-            //解析网页内容
-            $rules = $this->spider->getRules();
-            foreach($rules['url'] as $name=>$option){
-                $regex = $option['regex'];
-                //解析可用链接
-                if(preg_match_all("#{$regex}#iu", $client->body, $matches)){
-                    foreach($matches[0] as $url){
-                        //检查是否可用链接
-                        if(! $this->isEnableUrl($url, $option['reentry'])){
-                            Log::info("disable url: $url");
-                            continue;
-                        }
+        Log::info("Requested: {$job['url']}");
 
-                        //加入队列
-                        Queue::addUrl($url, $name);
-                        //写入缓存
-                        Cache::setUrl($url,0);
+
+        //解析网页内容
+        $rules = $this->spider->getRules();
+        $content = $response->getBody()->getContents();
+        foreach($rules['url'] as $name=>$option){
+            $regex = $option['regex'];
+            //解析可用链接
+            if(preg_match_all("#{$regex}#iu", $content, $matches)){
+                foreach($matches[0] as $url){
+                    //检查是否可用链接
+                    if(! $this->isEnableUrl($url, $option['reentry'])){
+                        Log::debug("disable url: $url");
+                        continue;
                     }
+
+                    //加入队列
+                    Queue::addUrl($url, $name);
+                    //写入缓存
+                    Cache::setUrl($url,0);
                 }
             }
+        }
 
-            $response = [
+
+        $fields = Arr::get($rules,'url.'.$job['type'].'.fields', false);
+
+        //解析字段
+        if($job['type'] !== 'index' && !empty($fields)){
+
+            $data = [
                 'type' => $job['type']
             ];
+            $crawler = new Crawler($content);
+            foreach($fields as $field){
+                $rule = $rules['fields'][$field];
 
+                $re = $crawler->filter($rule['selector']);
+                $value_rule = Arr::get($rule, 'value', 'text');
 
-            Log::info("{$job['type']}:".Arr::get($rules,$job['type'].'.fields', false));
-
-            //解析字段
-            if($fields = Arr::get($rules,$job['type'].'.fields', false)){
-                $crawler = new Crawler($client->body);
-                foreach($fields as $field){
-                    $rule = $rules['fields'][$field];
-
-                    $re = $crawler->filter($rule['selector']);
-                    $value_rule = Arr::get($rule, 'value', 'text');
-
-                    if(Arr::get($rule, 'multi', false)){
-                        $value = [];
-                        $re->each(function($node) use ($value_rule, &$value){
-                            $value[] = $this->getValue($value_rule,$node);
-                        });
-                    }else{
-                        $value = $this->getValue($value_rule,$re);
-                    }
-
-                    $response['data'][$field] = $value;
+                if(Arr::get($rule, 'multi', false)){
+                    $value = [];
+                    $re->each(function($node) use ($value_rule, &$value){
+                        $value[] = $this->getValue($value_rule,$node);
+                    });
+                }else{
+                    $value = $this->getValue($value_rule,$re);
                 }
 
-                $this->spider->onResponse($client, $response);
+                $data['data'][$field] = $value;
             }
 
+            $this->spider->onResponse($response, $data);
+        }
 
 
-            //移出队列
-            Queue::deleteUrl($job);
-            //更新缓存
-            Cache::setUrl($job['url'], 1);
-        });
+        //移出队列
+        Queue::deleteUrl($job);
+        //更新缓存
+        Cache::setUrl($job['url'], 1);
+
+    }
+
+    protected function needRetry()
+    {
+        return false;
     }
 
     protected function getValue($rule,Crawler $node)

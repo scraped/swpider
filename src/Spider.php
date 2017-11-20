@@ -147,14 +147,14 @@ abstract class Spider
         Log::info('爬虫开始');
     }
 
-    public function onRequest(Client $client)
+    public function onRequest($request)
     {
         //
     }
 
-    public function onResponse(Client $client, $data)
+    public function onResponse($response, $data)
     {
-        var_dump($data);
+        //
     }
 
 
