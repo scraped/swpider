@@ -2,133 +2,24 @@
 
 namespace Swpider;
 
-use GuzzleHttp\Client;
-use GuzzleHttp\Exception\ClientException;
-use Illuminate\Support\Arr;
-use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputArgument;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
-use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\EventDispatcher\EventDispatcher;
-use Symfony\Component\EventDispatcher\Event;
-use Symfony\Component\DomCrawler\Crawler;
-use Swpider\Event\SpiderReadyEvent;
 
-
-
-class Swpider extends Command
+class Worker
 {
-    const MAX_WAIT = 10;
+    private $master;
+    private $process;
+    private $spider;
 
-    protected $logger;
-    protected $job;
-    protected $spider;
-    protected $input;
-    protected $output;
-    protected $dispatcher;
-
-    //主进程id
-    protected $mpid = 0;
-    //进程池
-    private $workers = [];
-
-    //当前进程
-    private $active_worker;
-    //队列任务的重试次数
-    private $job_wait = 0;
-
-    protected $spiders = [
-        'test' => Spiders\Test::class,
-    ];
-
-
-    protected function configure()
+    public function __construct($master)
     {
-        $this->setName('run')
-            ->setDescription('start a spider job')
-            ->addOption('daemon','d', InputOption::VALUE_OPTIONAL, 'set daemon mode', false)
-            ->addArgument('spider', InputArgument::REQUIRED, 'spider job');
-    }
-
-    protected function execute(InputInterface $input, OutputInterface $output)
-    {
-        $this->input = $input;
-        $this->output = $output;
-        $this->dispatcher = new EventDispatcher();
-        Log::init($output);
-
-        $this->setupSpider();
-    }
-
-
-
-    protected function setupSpider()
-    {
-        $spider = $this->input->getArgument('spider');
-
-        if(! isset($this->spiders[$spider])){
-            Log::error("Spider $spider not found!");
-            exit(1);
-        }
-
-        $this->spider = new $this->spiders[$spider]($this);
-
-        if($this->input->hasOption('daemon')){
-            \swoole_process::daemon();
-        }
-        $this->initMaster();
-    }
-
-    //初始化主进程
-    protected function initMaster()
-    {
-        $this->mpid = posix_getpid();
-        swoole_set_process_name(sprintf('spider master:%s', $this->spider->name));
-
-        Log::debug("master start at " . date("Y-m-d H:i:s"));
-        Log::debug("master pid is {$this->mpid}");
-
-
-        Log::debug("connecting queue...");
-        Queue::connect($this->spider->getQueueConfig());
-
-
-        $event = new SpiderReadyEvent($this, $this->input, $this->output);
-        $this->dispatcher->dispatch('spider.ready', $event);
-
-        //将索引地址写入请求队列
-        foreach($this->spider->getIndexes() as $url){
-            Log::debug("push url：{$url}");
-            Queue::addIndex($url);
-        }
-
-        //开启爬虫进程
-        for($i = 0; $i < $this->spider->task_num; $i++){
-            $this->createWorker();
-        }
-
-        //开始观察进程
-        //$this->createWatcher();
-
-        //开始子进程监控
-        $this->wait();
-    }
-
-
-
-    protected function createWorker()
-    {
-        $worker = new \swoole_process([new Worker($this), 'start']);
-        $pid = $worker->start();
-        $this->workers[$pid] = $worker;
+        $this->master = $master;
+        $this->spider = $master->spider;
     }
 
 
     //爬虫进程逻辑
-    public function worker(\swoole_process $worker)
+    public function start(\swoole_process $worker)
     {
-        $this->active_worker = $worker;
+        $this->process = $worker;
         $this->spider->onStart();
         //清空子进程的进程数组
         unset($this->workers);
@@ -297,50 +188,8 @@ class Swpider extends Command
 
     }
 
-    public function getDispatcher()
+    protected function dispatch($event_name, $event)
     {
-        return $this->dispatcher;
+        $this->master->getDispatcher()->dispatch($event_name, $event);
     }
-
-    /**
-     * 监控主进程状态
-     */
-    protected function checkMaster()
-    {
-        if(!\swoole_process::kill($this->mpid,0)){
-            Log::alert("Master process exited, Children process {$this->active_worker->pid} exit at " . date('Y-m-d H:i:s'));
-            $this->active_worker->exit(0);
-        }
-    }
-
-
-
-    //检查主进程是否已结束
-    protected function watchMaster(\swoole_process &$worker)
-    {
-        if(! \swoole_process::kill($this->mpid, 0)){
-            $worker->exit(0);
-            Log::notice("Master process exited! Process {$worker['pid']} quit now.");
-        }
-    }
-
-
-    protected function wait()
-    {
-        while(1){
-            if(count($this->workers)){
-                $ret = \swoole_process::wait();
-                if($ret){
-                    //从集合中剔除
-                    unset($this->workers[$ret['pid']]);
-                    //新建进程，保证进程数
-                    //$this->createWorker();
-                }
-            }else{
-                break;
-            }
-        }
-    }
-
-
 }

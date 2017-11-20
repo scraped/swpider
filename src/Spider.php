@@ -56,6 +56,7 @@ abstract class Spider
     public function __construct(Swpider $swpider)
     {
         $this->cmd = $swpider;
+
     }
 
     //爬虫规则

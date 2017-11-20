@@ -4,12 +4,13 @@ namespace Swpider\Spiders;
 
 use Swpider\Spider;
 use Swpider\Log;
+use Swpider\Swpider;
 
 class Test extends Spider
 {
     public $name = 'luoo';
 
-    public $task_num = 10;
+    public $task_num = 5;
 
     public $queue_name = 'luoo';
 
@@ -44,6 +45,23 @@ class Test extends Spider
         ],
     ];
 
+    public function __construct($swpider)
+    {
+        parent::__construct($swpider);
+
+        $this->bind('spider.ready', [$this, 'onReady']);
+    }
+
+
+    public function bind($event, $action)
+    {
+        $this->cmd->getDispatcher()->addListener($event, $action);
+    }
+
+    public function onReady()
+    {
+        var_dump('spider ready!!!!!');
+    }
 
     public function onStart()
     {

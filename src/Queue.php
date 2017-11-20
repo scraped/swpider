@@ -13,6 +13,8 @@ class Queue
     const DEFAULT_PORT = 11300;
     const DEFAULT_TIMEOUT = 1;
 
+    const WAIT_TIME = 0;
+
 
     const PRI_INDEX = 100;
     const PRI_LIST = 200;
@@ -89,7 +91,7 @@ class Queue
 
     public static function getUrl()
     {
-        $job = self::queue()->reserve();
+        $job = self::queue()->reserve(self::WAIT_TIME);
 
         if($job instanceof Job){
             return self::decodeJob($job);
