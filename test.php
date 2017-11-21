@@ -66,7 +66,24 @@ use Symfony\Component\EventDispatcher\Event;
 //
 
 //Queue::connect();
-//$re = Queue::reserve(1);
+////Queue::put("test");
+//
+//$job = Queue::reserve(1);
+//
+//$id = $job->getId();
+//
+//$state = Queue::statsJob($job);
+//
+//
+//
+//if($state->releases > 10){
+//    var_dump('bury');
+//    Queue::bury($job);
+//}else{
+//    var_dump('release');
+//    Queue::release($job);
+//}
+
 //
 //
 //var_dump($re);
@@ -160,38 +177,56 @@ use Symfony\Component\EventDispatcher\Event;
 
 //new Process();
 
-class MyListener
-{
-    public function onFooAction(Event $event)
-    {
-        var_dump($event->getName());
-    }
+//class MyListener
+//{
+//    public function onFooAction(Event $event)
+//    {
+//        var_dump($event->getName());
+//    }
+//}
+//
+//class MyEvent extends Event
+//{
+//    protected $name;
+//
+//    public function __construct($arg)
+//    {
+//        $this->name = $arg;
+//    }
+//
+//    public function getName()
+//    {
+//        return $this->name;
+//    }
+//}
+//
+//$event = new MyEvent('test');
+//
+//
+//$dispatcher = new EventDispatcher();
+//$listener = new MyListener();
+//$dispatcher->addListener('foo.action', [$listener, 'onFooAction']);
+//
+//
+//$dispatcher->dispatch('foo.action',$event);
+
+
+
+$client = new \GuzzleHttp\Client([
+    'timeout' => 5
+]);
+
+try{
+    $response = $client->get("http://www.163.com");
+    $body = $response->getBody()->getContents();
+    $mb_body = mb_convert_encoding($body, 'UTF-8', 'GBK');
+    var_dump($mb_body);
+
+}catch (\GuzzleHttp\Exception\RequestException $e){
+    //var_dump($e);
+    var_dump($e->getCode());
 }
 
-class MyEvent extends Event
-{
-    protected $name;
-
-    public function __construct($arg)
-    {
-        $this->name = $arg;
-    }
-
-    public function getName()
-    {
-        return $this->name;
-    }
-}
-
-$event = new MyEvent('test');
-
-
-$dispatcher = new EventDispatcher();
-$listener = new MyListener();
-$dispatcher->addListener('foo.action', [$listener, 'onFooAction']);
-
-
-$dispatcher->dispatch('foo.action',$event);
 
 
 

@@ -2,17 +2,27 @@
 
 namespace Swpider;
 
+use GuzzleHttp\Client;
+use GuzzleHttp\Exception\ClientException;
+use Illuminate\Support\Arr;
+use Swpider\Event\SpiderEvent;
+use Swpider\Event\SpiderResponseEvent;
+use Swpider\Event\SpiderStartEvent;
+use Symfony\Component\DomCrawler\Crawler;
+
 
 class Worker
 {
+    const MAX_WAIT = 10;
+
     private $master;
     private $process;
     private $spider;
 
-    public function __construct($master)
+    public function __construct(Swpider $master)
     {
         $this->master = $master;
-        $this->spider = $master->spider;
+        $this->spider = $master->getSpider();
     }
 
 
@@ -20,9 +30,9 @@ class Worker
     public function start(\swoole_process $worker)
     {
         $this->process = $worker;
-        $this->spider->onStart();
+
         //清空子进程的进程数组
-        unset($this->workers);
+        $this->master->clearWorkers();
 
         //进程命名
         swoole_set_process_name(sprintf('spider pool:%s', $this->spider->name));
@@ -34,11 +44,13 @@ class Worker
         //建立redis链接
         Cache::connect($this->spider->getRedisConfig());
 
+        $this->dispatch('spider.start', new SpiderStartEvent($this->master, $this));
 
         //操作队列
         $this->handleQueue();
 
     }
+
 
     //操作队列
     protected function handleQueue()
@@ -46,24 +58,13 @@ class Worker
         //从队列取任务, 如果长时间没有任务，则考虑关闭该进程
         while(1){
 
-            $job = Queue::getUrl();
+            //todo: 队列监听退出机制
+            $job = Queue::getUrl(1);
 
-            if(! $job){
-
-                if($this->job_wait < self::MAX_WAIT){
-                    $this->job_wait++;
-                    usleep(100);
-                    continue;
-                }else{
-                    //超过重试次数，退出队列监听
-                    break;
-                }
+            if($job){
+                //解析任务
+                $this->resolverJob($job);
             }
-
-            $this->job_wait = 0;
-
-            //解析任务
-            $this->resolverJob($job);
 
             //检查主进程状态
             $this->checkMaster();
@@ -75,28 +76,31 @@ class Worker
     protected function resolverJob($job)
     {
         Log::debug("Requesting: {$job['url']}");
-
-        $client = new Client([
-            'time' => 2.0
-        ]);
+        $time_start = microtime(true);
 
         try{
-            $response = $client->get($job['url']);
+            $response = Request::get($job['url']);
         }catch(ClientException $e){
             if($this->needRetry($e)){
-                return false;
+                Queue::releaseUrl($job);
+            }else{
+                Queue::buryUrl($job);
             }
-
-            Queue::releaseUrl($job);
-            throw $e;
+            //更新缓存
+            Cache::setUrl($job['url'], -1);
+            return false;
         }
 
         Log::debug("Requested: {$job['url']}");
 
-
         //解析网页内容
         $rules = $this->spider->getRules();
         $content = $response->getBody()->getContents();
+        //内容转码
+        if($this->spider->from_encode !== $this->spider->to_encode){
+            $content = @mb_convert_encoding($content, strtoupper($this->spider->to_encode), strtoupper($this->spider->from_encode));
+        }
+
         foreach($rules['url'] as $name=>$option){
             $regex = $option['regex'];
             //解析可用链接
@@ -144,7 +148,9 @@ class Worker
                 $data['data'][$field] = $value;
             }
 
-            $this->spider->onResponse($response, $data);
+            $this->dispatch('spider.response', new SpiderResponseEvent($this->master, $this, $response, $data));
+
+            //$this->spider->onResponse($response, $data);
         }
 
 
@@ -153,10 +159,22 @@ class Worker
         //更新缓存
         Cache::setUrl($job['url'], 1);
 
+        $runtime = microtime(true) - $time_start;
+        Log::debug("Job done at " . date('Y-m-d H:i:s') . ", spend time: $runtime");
+
     }
 
-    protected function needRetry()
+    /**
+     * 是否需要重新抓取
+     * @param \Exception $e
+     * @return bool
+     */
+    protected function needRetry(\Exception $e)
     {
+        if(in_array($e->getCode(), ['0', '502', '503', '429'])){
+            return true;
+        }
+
         return false;
     }
 
@@ -191,5 +209,22 @@ class Worker
     protected function dispatch($event_name, $event)
     {
         $this->master->getDispatcher()->dispatch($event_name, $event);
+    }
+
+
+    /**
+     * 监控主进程状态
+     */
+    protected function checkMaster()
+    {
+        if(!\swoole_process::kill($this->master->pid,0)){
+            Log::debug("Master process exited, Children process {$this->process->pid} exit at " . date('Y-m-d H:i:s'));
+            $this->process->exit(0);
+        }
+    }
+
+    public function getProcess()
+    {
+        return $this->process;
     }
 }

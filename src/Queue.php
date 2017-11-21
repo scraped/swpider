@@ -13,12 +13,13 @@ class Queue
     const DEFAULT_PORT = 11300;
     const DEFAULT_TIMEOUT = 1;
 
-    const WAIT_TIME = 0;
-
-
+    const PRI_INC = 10;
     const PRI_INDEX = 100;
     const PRI_LIST = 200;
     const PRI_CONTENT = 300;
+
+    const DELAY = 1;
+    const MAX_RETRY = 5;
 
     private static $_queue;
 
@@ -89,9 +90,9 @@ class Queue
     }
 
 
-    public static function getUrl()
+    public static function getUrl($timeout = null)
     {
-        $job = self::queue()->reserve(self::WAIT_TIME);
+        $job = self::queue()->reserve($timeout);
 
         if($job instanceof Job){
             return self::decodeJob($job);
@@ -100,9 +101,28 @@ class Queue
         }
     }
 
+    public static function buryUrl($obj)
+    {
+        $job = self::encodeJob($obj);
+        $state = self::queue()->stateJob($job);
+
+        self::queue()->bury($job, $state->pri + self::PRI_INC*1000);
+    }
+
+
     public static function releaseUrl($obj)
     {
-        self::queue()->release(self::encodeJob($obj));
+        $job = self::encodeJob($obj);
+        $state = self::queue()->stateJob($job);
+
+        if($state->releases > self::MAX_RETRY){
+            //超过最大次数，该任务设为无效
+            self::queue()->bury($job, $state->pri + self::PRI_INC);
+        }else{
+            //释放回队列，降低优先级，延迟1秒
+            self::queue()->release($job, $state->pri + self::PRI_INC, self::DELAY);
+        }
+
     }
 
     public static function deleteUrl($obj)

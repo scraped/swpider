@@ -6,40 +6,43 @@ use Swpider\Spider;
 use Swpider\Log;
 use Swpider\Swpider;
 
-class Test extends Spider
+class Xiami extends Spider
 {
-    public $name = 'luoo';
+    public $name = 'xiami';
 
     public $task_num = 2;
 
-    public $queue_name = 'luoo';
+    public $queue_name = 'xiami';
 
     protected $db_name = 'swpider';
     protected $db_user = 'root';
     protected $db_password = '123456';
 
     protected $indexes = [
-        'http://dev.luoo.net/music/'
+        'http://www.xiami.com/artist/index/c/1/type/0'
     ];
 
     protected $rules = [
         'fields' => [
-            'title' => [
+            'artist' => [
                 'type' => 'css',
-                'selector' => 'h1.vol-name > span.vol-title',
-                'value' => 'text',
-                'multi' => false
+                'selector' => '#artists .info > p > strong > a',
+                'group' => [
+                    'name' => [
+                        'value' => 'text'
+                    ],
+                    'href' => [
+                        'value' => '@href'
+                    ]
+                ],
+                'multi' => true
             ]
         ],
         'url' => [
-            'vol_list' => [
-                'regex' => "http:\/\/dev.luoo.net\/tag\/?p=\d+",
+            'artist_list' => [
+                'regex' => "http:\/\/www.xiami.com/artist/index/c/\d+\/type\/\d+/class/\d+/page/\d+",
                 'reentry' => 86400,
-            ],
-            'vol' => [
-                'regex' => "http:\/\/dev.luoo.net\/vol\/index\/\d+",
-                'fields' => ['title'],
-                'reentry' => false,
+                'fields' => ['artist', 'artist_key'],
             ]
 
         ],

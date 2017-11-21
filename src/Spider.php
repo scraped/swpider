@@ -22,6 +22,9 @@ abstract class Spider
     //进程数
     public $task_num = 1;
 
+    //设置返回编码
+    public $from_encode = 'utf-8';
+    public $to_encode = 'utf-8';
 
 
     //数据库设置
@@ -51,6 +54,8 @@ abstract class Spider
     protected $redis_port = '6379';
     protected $redis_prefix = '';
     protected $redis_scheme = 'tcp';
+
+
 
 
     public function __construct(Swpider $swpider)
@@ -127,6 +132,8 @@ abstract class Spider
 
         return $config;
     }
+
+
 
 
 
