@@ -42,7 +42,7 @@ class Xiami extends Spider
             'artist_list' => [
                 'regex' => "http:\/\/www.xiami.com/artist/index/c/\d+\/type\/\d+/class/\d+/page/\d+",
                 'reentry' => 86400,
-                'fields' => ['artist', 'artist_key'],
+                'fields' => ['artist'],
             ]
 
         ],
