@@ -10,6 +10,11 @@ class Cache
     const HOST = '127.0.0.1';
     const PORT = 6379;
 
+    const URL_ERROR = -1;           //请求失败
+    const URL_READY = 0;            //未处理
+    const URL_LOADED = 1;           //已处理
+    const URL_EXCEPT = 2;           //有异常
+
     private static $_client;
 
     protected static $config;

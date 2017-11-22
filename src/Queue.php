@@ -104,7 +104,7 @@ class Queue
     public static function buryUrl($obj)
     {
         $job = self::encodeJob($obj);
-        $state = self::queue()->stateJob($job);
+        $state = self::queue()->statsJob($job);
 
         self::queue()->bury($job, $state->pri + self::PRI_INC*1000);
     }
@@ -113,7 +113,7 @@ class Queue
     public static function releaseUrl($obj)
     {
         $job = self::encodeJob($obj);
-        $state = self::queue()->stateJob($job);
+        $state = self::queue()->statsJob($job);
 
         if($state->releases > self::MAX_RETRY){
             //超过最大次数，该任务设为无效

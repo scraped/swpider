@@ -22,6 +22,8 @@ class SpiderResponseEvent extends ConsoleEvent
     {
         parent::__construct($command, $command->getInput(), $command->getOutput());
         $this->process = $process;
+        $this->response = $response;
+        $this->data = $data;
     }
 
     public function getProcess()

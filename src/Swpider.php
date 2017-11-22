@@ -32,6 +32,7 @@ class Swpider extends Command
 
     protected $spiders = [
         'test' => Spiders\Test::class,
+        'xiami' => Spiders\Xiami::class,
     ];
 
 
@@ -40,6 +41,7 @@ class Swpider extends Command
         $this->setName('run')
             ->setDescription('start a spider job')
             ->addOption('daemon','d', InputOption::VALUE_NONE, 'set daemon mode')
+            ->addOption('single','s', InputOption::VALUE_NONE, 'set single mode')
             ->addArgument('spider', InputArgument::REQUIRED, 'spider job');
     }
 

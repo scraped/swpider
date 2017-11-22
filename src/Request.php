@@ -5,6 +5,8 @@ namespace Swpider;
 use Closure;
 use Exception;
 use GuzzleHttp\Client;
+use GuzzleHttp\Cookie\CookieJar;
+use GuzzleHttp\Cookie\SetCookie;
 
 
 /**
@@ -20,7 +22,7 @@ use GuzzleHttp\Client;
  */
 class Request
 {
-    const TIMEOUT = 2;
+    const TIMEOUT = 5;
     //DNS 缓存
     public static $domain_dns = [];
     //Cookie 缓存
@@ -44,15 +46,28 @@ class Request
     //重试队列
     protected static $retry_queue = [];
 
+    private static $_config;
 
     private static $_client;
 
+    private static $_cookie;
+    private static $_cookie_modify = false;
+
+    public static function init($config = [])
+    {
+        self::$_config = $config;
+
+        if(isset($config['cookies'])){
+            self::setCookie($config['cookies']);
+        }
+    }
 
     public static function client()
     {
         if(!isset(self::$_client)){
             self::$_client = new Client([
                 'timeout' => self::TIMEOUT,
+                'cookies' => isset(self::$_cookie),
             ]);
         }
 
@@ -60,13 +75,34 @@ class Request
     }
 
 
+    public static function setCookie($str_cookie)
+    {
+        self::$_cookie = new CookieJar(SetCookie::fromString($str_cookie));
+        self::$_cookie_modify = true;
+    }
+
+
     public static function request($method, $url, $option = [])
     {
+        if(isset(self::$_cookie) && self::$_cookie_modify && !isset($option['cookies'])){
+            $option['cookies'] = self::$_cookie;
+            self::$_cookie_modify = false;
+        }
         return self::client()->request($method, $url, $option);
     }
 
 
+    public static function __callStatic($name, $arguments)
+    {
+        if (count($arguments) < 1) {
+            throw new \InvalidArgumentException('Magic request methods require a URI and optional options array');
+        }
 
+        $uri = $arguments[0];
+        $opts = isset($arguments[1]) ? $arguments[1] : [];
+
+        return self::request($name, $uri, $opts);
+    }
 
 
 }

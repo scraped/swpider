@@ -34,29 +34,30 @@ use Symfony\Component\EventDispatcher\Event;
 //    sleep(1);
 //}
 
-//$html = <<<HTML
-//<!DOCTYPE html>
-//<html>
-//    <body>
-//        <p class="message">Hello World!</p>
-//        <p>Hello Crawler!</p>
-//        <p>Hello Crawler!</p>
-//        <p>Hello Crawler!</p>
-//        <p>Hello Crawler!</p>
-//    </body>
-//</html>
-//HTML;
-//
-//$crawler = new Crawler($html);
-//
-//
-//
-//$css = new CssSelectorConverter();
-//$xpath = $css->toXPath("p.message+p");
-//
-//
-//$re = $crawler->filter('p');
-////$re = $crawler->filterXPath("//p[@class='message']//@class");
+$html = <<<HTML
+<!DOCTYPE html>
+<html>
+    <body>
+        <p class="message">Hello World!</p>
+        <p>Hello Crawler!</p>
+        <p>Hello Crawler!</p>
+        <p>Hello Crawler!</p>
+        <p>Hello Crawler!</p>
+    </body>
+</html>
+HTML;
+
+$crawler = new Crawler($html);
+
+
+
+$css = new CssSelectorConverter();
+//$xpath = $css->toXPath("div#test");
+
+
+$re = $crawler->filter('div#test');
+var_dump($re->text());
+//$re = $crawler->filterXPath("//p[@class='message']//@class");
 //$re->each(function($node){
 //    var_dump($node->text());
 //});
@@ -212,20 +213,20 @@ use Symfony\Component\EventDispatcher\Event;
 
 
 
-$client = new \GuzzleHttp\Client([
-    'timeout' => 5
-]);
-
-try{
-    $response = $client->get("http://www.163.com");
-    $body = $response->getBody()->getContents();
-    $mb_body = mb_convert_encoding($body, 'UTF-8', 'GBK');
-    var_dump($mb_body);
-
-}catch (\GuzzleHttp\Exception\RequestException $e){
-    //var_dump($e);
-    var_dump($e->getCode());
-}
+//$client = new \GuzzleHttp\Client([
+//    'timeout' => 5
+//]);
+//
+//try{
+//    $response = $client->get("http://www.163.com");
+//    $body = $response->getBody()->getContents();
+//    $mb_body = mb_convert_encoding($body, 'UTF-8', 'GBK');
+//    var_dump($mb_body);
+//
+//}catch (\GuzzleHttp\Exception\RequestException $e){
+//    //var_dump($e);
+//    var_dump($e->getCode());
+//}
 
 
 

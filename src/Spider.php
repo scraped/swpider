@@ -26,6 +26,9 @@ abstract class Spider
     public $from_encode = 'utf-8';
     public $to_encode = 'utf-8';
 
+    //设置域名
+    public $domain = '';
+
 
     //数据库设置
     protected $db;
