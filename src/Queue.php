@@ -131,6 +131,14 @@ class Queue
     }
 
 
+    public static function stats()
+    {
+        return self::queue()->statsTube(Arr::get(self::$config, 'name', 'default'))
+            ->getArrayCopy();
+    }
+
+
+
     protected static function encodeData($data)
     {
         return json_encode($data);

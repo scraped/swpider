@@ -19,6 +19,8 @@ class Cache
 
     protected static $config;
 
+    private static $worker = [];
+
 
     public static function connect($config = null)
     {
@@ -38,7 +40,10 @@ class Cache
 
         self::$_client->connect(self::$config['host'], self::$config['port']);
 
-        self::$_client->setOption(Redis::OPT_PREFIX, self::$config['prefix'] . ":");
+        if(isset(self::$config['prefix'])){
+            self::$_client->setOption(Redis::OPT_PREFIX, self::$config['prefix'] . ":");
+        }
+
     }
 
 
@@ -55,7 +60,7 @@ class Cache
         return [
             'host' => self::HOST,
             'port' => self::PORT,
-            'prefix' => '',
+            'prefix' => null,
         ];
     }
 
@@ -86,6 +91,63 @@ class Cache
 
         self::client()->hSet($name, $key, json_encode($data));
     }
+
+
+    public static function stats()
+    {
+        $re = [
+            'urls' => self::client()->hLen("urls"),
+        ];
+
+        return $re;
+    }
+
+
+    public static function setWorker($pid, $config)
+    {
+        $name = 'workers';
+        $key = $pid;
+
+        self::$worker = array_merge(self::$worker, $config);
+
+        self::client()->hSet($name, $key, json_encode(self::$worker));
+    }
+
+
+    public static function getWorker($pid)
+    {
+        $name = 'workers';
+        $key = $pid;
+
+        if(! self::$_client->hExists($name, $key)){
+            return false;
+        }
+
+        $value = self::client()->hGet($name, $key);
+
+        return json_decode($value, true);
+    }
+
+    public static function getWorkers()
+    {
+        $name = 'workers';
+
+        $value = self::client()->hGetAll($name);
+
+        var_dump($value);
+
+        return $value;
+    }
+
+    public static function delWorker($pid)
+    {
+        $name = 'workers';
+        $key = $pid;
+
+        self::client()->hDel($name, $key);
+    }
+
+
 
     protected static function getUrlKey($url)
     {

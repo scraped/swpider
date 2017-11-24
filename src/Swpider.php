@@ -101,7 +101,7 @@ class Swpider extends Command
         }
 
         //开始观察进程
-        //$this->createWatcher();
+        $this->createWatcher();
 
         //开始子进程监控
         $this->wait();
@@ -114,6 +114,12 @@ class Swpider extends Command
         $worker = new \swoole_process([new Worker($this), 'start']);
         $pid = $worker->start();
         $this->workers[$pid] = $worker;
+    }
+
+    protected function createWatcher()
+    {
+        $worker = new \swoole_process([new Watcher($this), 'start']);
+        $worker->start();
     }
 
 
@@ -158,6 +164,8 @@ class Swpider extends Command
                 if($ret){
                     //从集合中剔除
                     unset($this->workers[$ret['pid']]);
+                    //删除缓存
+                    Cache::delWorker($ret['pid']);
                     //新建进程，保证进程数
                     //$this->createWorker();
                 }

@@ -5,13 +5,12 @@ namespace Swpider\Spiders;
 use Swpider\Database;
 use Swpider\Spider;
 use Swpider\Log;
-use Swpider\Swpider;
 
 class Xiami extends Spider
 {
     public $name = 'xiami';
 
-    public $task_num = 5;
+    public $task_num = 1;
 
     public $queue_name = 'xiami';
 
@@ -74,14 +73,11 @@ class Xiami extends Spider
     }
 
 
-    public function bind($event, $action)
-    {
-        $this->cmd->getDispatcher()->addListener($event, $action);
-    }
+
 
     public function onReady()
     {
-        var_dump('xiami spider ready!!!!!');
+        Log::debug('xiami spider ready!');
     }
 
     public function onStart()
@@ -120,14 +116,16 @@ class Xiami extends Spider
     }
 
 
-    /**
-     * 验证请求返回内容
-     * @param $response
-     * @return bool
-     */
-    public function verifyResponse($response)
+
+    public function verifyResponse($response, $content)
     {
-        return true;
+        return self::RES_NORMAL;
+    }
+
+
+    public function login()
+    {
+
     }
 
 
@@ -147,6 +145,7 @@ class Xiami extends Spider
     {
         return $this->cookies[$key];
     }
+
 
 
 

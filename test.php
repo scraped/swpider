@@ -34,29 +34,29 @@ use Symfony\Component\EventDispatcher\Event;
 //    sleep(1);
 //}
 
-$html = <<<HTML
-<!DOCTYPE html>
-<html>
-    <body>
-        <p class="message">Hello World!</p>
-        <p>Hello Crawler!</p>
-        <p>Hello Crawler!</p>
-        <p>Hello Crawler!</p>
-        <p>Hello Crawler!</p>
-    </body>
-</html>
-HTML;
-
-$crawler = new Crawler($html);
-
-
-
-$css = new CssSelectorConverter();
-//$xpath = $css->toXPath("div#test");
-
-
-$re = $crawler->filter('div#test');
-var_dump($re->text());
+//$html = <<<HTML
+//<!DOCTYPE html>
+//<html>
+//    <body>
+//        <p class="message">Hello World!</p>
+//        <p>Hello Crawler!</p>
+//        <p>Hello Crawler!</p>
+//        <p>Hello Crawler!</p>
+//        <p>Hello Crawler!</p>
+//    </body>
+//</html>
+//HTML;
+//
+//$crawler = new Crawler($html);
+//
+//
+//
+//$css = new CssSelectorConverter();
+////$xpath = $css->toXPath("div#test");
+//
+//
+//$re = $crawler->filter('div#test');
+//var_dump($re->text());
 //$re = $crawler->filterXPath("//p[@class='message']//@class");
 //$re->each(function($node){
 //    var_dump($node->text());
@@ -69,11 +69,13 @@ var_dump($re->text());
 //Queue::connect();
 ////Queue::put("test");
 //
-//$job = Queue::reserve(1);
+////$job = Queue::reserve(1);
 //
-//$id = $job->getId();
+////$id = $job->getId();
 //
-//$state = Queue::statsJob($job);
+//$state = Queue::statsTube('test');
+//
+//var_dump($state->getArrayCopy());
 //
 //
 //
@@ -164,15 +166,16 @@ var_dump($re->text());
 
 
 
-//Cache::connect();
-//
-//
-//Cache::hSet('h', 'key1', 'hello');
-//$re = Cache::hExists('h1', 'key2');
-////$re = Redis::get('name');
-//
-//var_dump($re);
+Cache::connect();
 
+
+//Cache::hSet('h', 'key1', 'hello');
+$re = Cache::hGetAll("xiami:workers");
+//$re = Redis::get('name');
+
+foreach($re as $item){
+    var_dump($item);
+}
 
 
 
@@ -229,5 +232,44 @@ var_dump($re->text());
 //}
 
 
+//
+$i = 0;
+//function prints()
+//{
+//    $len = 10;
+//    global $i;
+//
+//    echo "\033[K";
+//    echo "\033[1A";
+//    echo "\033[1A";
+//    echo "\r";
+//    echo $i . "\r\n";
+//    echo $i . "\r\n";
+//    //echo "\r" . $len - $i;
+//}
+//
+//
+//while($i++ < 10){
+//    prints();
+//    sleep(2);
+//}
 
-
+//$num = 1;
+//$location = 2;
+//$format = "The % 10s 9s contains";
+//echo sprintf($format,'1');
+//sleep(2);
+//while($i++ <10){
+//    Request::get('http://www.baidu.com?s='.$i);
+//}
+//
+//var_dump(memory_get_usage());
+//var_dump(getrusage());
+//for($i=0;$i<1000;$i++) {
+//}
+//var_dump(getrusage());
+//var_dump(getrusage());
+//
+//$val = null;
+//$str = '{"pid":9509,"stat":"wait","url":"http:\/\/www.xiami.com\/artist\/index\/c\/2","statistics":{"request":2,"success":2,"fail":0},"usage":{"ru_oublock":0,"ru_inblock":0,"ru_msgsnd":0,"ru_msgrcv":0,"ru_maxrss":16828,"ru_ixrss":0,"ru_idrss":0,"ru_minflt":1373,"ru_majflt":0,"ru_nsignals":0,"ru_nvcsw":1785,"ru_nivcsw":0,"ru_nswap":0,"ru_utime.tv_usec":21560,"ru_utime.tv_sec":0,"ru_stime.tv_usec":75560,"ru_stime.tv_sec":0},"memory":3176376}';
+//var_dump(json_decode($str, true));

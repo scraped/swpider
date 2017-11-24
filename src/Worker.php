@@ -2,8 +2,6 @@
 
 namespace Swpider;
 
-use GuzzleHttp\Client;
-use GuzzleHttp\Exception\ClientException;
 use Illuminate\Support\Arr;
 use Swpider\Event\SpiderEvent;
 use Swpider\Event\SpiderResponseEvent;
@@ -16,12 +14,28 @@ class Worker
     const MAX_WAIT = 10;
     const MAX_EXCEPTION = 10;
 
+    const S_READY = 'ready';
+    const S_WAIT = 'wait';
+    const S_DONE = 'done';
+    const S_SLEEP = 'sleep';
+    const S_EXCEPT = 'except';
+    const S_REQUEST = 'request';
+    const S_QUIT = 'quit';
+
+    const SLEEP = 100;
+
     private $master;
     private $process;
     private $spider;
     private $exceptions = 0;
     private $running = true;
     private $time;
+    private $stat;
+    private $statistics = [
+        'request' => 0,
+        'success' => 0,
+        'fail' => 0,
+    ];
 
     public function __construct(Swpider $master)
     {
@@ -55,6 +69,10 @@ class Worker
 
         $this->dispatch('spider.start', new SpiderStartEvent($this->master, $this));
 
+        $this->setStat(self::S_READY,[
+            'pid' => $this->getPid(),
+        ]);
+
         //操作队列
         $this->handleQueue();
 
@@ -67,6 +85,8 @@ class Worker
         //从队列取任务, 如果长时间没有任务，则考虑关闭该进程
         while(1){
 
+            $this->setStat(self::S_WAIT);
+
             //todo: 队列监听退出机制
             $job = Queue::getUrl(1);
 
@@ -75,15 +95,20 @@ class Worker
                 $this->resolverJob($job);
             }
 
+            //记录当前进程的状态
+            $this->setStat(null, $this->checkProcessStatus());
+
             //检查主进程状态
             $this->checkMaster();
 
+
             //是否单次模式
             if($this->master->getInput()->getOption('single') || ! $this->running ){
+                Cache::delWorker($this->getPid());
                 break;
             }
             //不要太快，休息，休息一下
-            usleep(100);
+            usleep(self::SLEEP);
         }
     }
 
@@ -97,6 +122,11 @@ class Worker
         }else{
             $url = rtrim($this->spider->domain, ' /') . '/' . ltrim($job['url'], ' /');
         }
+
+        $this->statistics['request'] ++ ;
+        $this->setStat(self::S_REQUEST, [
+            'url' => $url,
+        ]);
 
         try{
             Log::debug("Requesting: {$job['url']}");
@@ -113,6 +143,7 @@ class Worker
             }
             //更新缓存
             Cache::setUrl($job['url'], Cache::URL_ERROR);
+            $this->statistics['fail'] ++ ;
             return false;
         }
 
@@ -121,6 +152,16 @@ class Worker
         //解析网页内容
         $rules = $this->spider->getRules();
         $content = $response->getBody()->getContents();
+        $is_successful = true;
+
+        //验证返回内容是否合格
+        switch($stat = $this->spider->verifyResponse($response, $content)){
+            case Spider::RES_LOGIN :
+                $this->dispatch('spider.login', new SpiderEvent($this->master, $this));
+                return false;
+        }
+
+
         //内容转码
         if($this->spider->from_encode !== $this->spider->to_encode){
             $content = @mb_convert_encoding($content, strtoupper($this->spider->to_encode), strtoupper($this->spider->from_encode));
@@ -130,11 +171,9 @@ class Worker
             $regex = $option['regex'];
             //解析可用链接
             if(preg_match_all("#{$regex}#iu", $content, $matches)){
-                Log::debug("url matched！");
                 foreach($matches[0] as $url){
                     //检查是否可用链接
                     if(! $this->isEnableUrl($url, $option['reentry'])){
-                        Log::debug("disable url: $url");
                         continue;
                     }
                     Log::debug("put url: $url");
@@ -182,6 +221,9 @@ class Worker
 
             //需要验证采集数据，对异常页面进行采样供分析
             if(! $this->validateValue($rules, $fields, $data)){
+
+                $is_successful = false;
+
                 $this->logResponseException($url, $response, $content, $data);
 
                 if(++$this->exceptions > self::MAX_EXCEPTION){
@@ -189,19 +231,22 @@ class Worker
                 }
             }
 
-
-
             $this->dispatch('spider.response', new SpiderResponseEvent($this->master, $this, $response, $data));
 
             Log::debug("resolver response done!");
-            //$this->spider->onResponse($response, $data);
         }
 
-
-        //移出队列
-        Queue::deleteUrl($job);
-        //更新缓存
-        Cache::setUrl($job['url'], Cache::URL_LOADED);
+        if ($is_successful){
+            //移出队列
+            Queue::deleteUrl($job);
+            //更新缓存
+            Cache::setUrl($job['url'], Cache::URL_LOADED);
+            $this->statistics['success'] ++ ;
+        }else{
+            Queue::releaseUrl($job);
+            Cache::setUrl($job['url'], Cache::URL_EXCEPT);
+            $this->statistics['fail'] ++ ;
+        }
 
         $runtime = microtime(true) - $time_start;
         Log::debug("Job done at " . date('Y-m-d H:i:s') . ", spend time: $runtime");
@@ -362,10 +407,39 @@ class Worker
     }
 
 
+    protected function setStat($stat = null, $options = [])
+    {
+        if(isset($stat)){
+            $this->stat = $stat;
+            $options = array_merge($options, [
+                'stat' => $stat
+            ]);
+        }
+
+        Cache::setWorker($this->getPid(),$options);
+    }
+
+    protected function checkProcessStatus()
+    {
+        $usage = getrusage();
+        $mem = memory_get_usage();
+
+        return [
+            //'statistics' => $this->statistics,
+            //'usage' => $usage,
+            //'memory' => $mem,
+        ];
+    }
 
 
     public function getProcess()
     {
         return $this->process;
+    }
+
+
+    public function getPid()
+    {
+        return $this->process->pid;
     }
 }

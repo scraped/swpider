@@ -2,10 +2,6 @@
 
 namespace Swpider;
 
-use Swoole\Http\Client;
-use Swpider\Queue;
-use Swpider\Swpider;
-
 abstract class Spider
 {
     const URL_LIST = 1;
@@ -15,6 +11,15 @@ abstract class Spider
     const FORMAT_JSON = 2;
     const FORMAT_JSONP = 3;
     const FORMAT_TEXT = 4;
+
+
+    const RES_NORMAL = 1;           //正常状态
+    const RES_LOGIN = 2;            //需要登录
+    const RES_VERIFY = 3;           //需要验证请求
+    const RES_PROXY = 4;            //需要代理
+    const RES_EXCEPT = -1;          //其他异常
+
+
 
     public $cmd;
     //爬虫名
@@ -137,7 +142,16 @@ abstract class Spider
     }
 
 
-
+    /**
+     * 验证请求返回内容
+     * @param $response
+     * @param $content
+     * @return bool
+     */
+    public function verifyResponse($response, $content)
+    {
+        return true;
+    }
 
 
     public function getIndexes()
@@ -150,23 +164,15 @@ abstract class Spider
         return $this->rules;
     }
 
-
-    //爬虫开始前
-    public function onStart()
+    public function getStat()
     {
-        //
-        Log::info('爬虫开始');
+        return [];
     }
 
-    public function onRequest($request)
-    {
-        //
-    }
 
-    public function onResponse($response, $data)
+    public function bind($event, $action)
     {
-        //
+        $this->cmd->getDispatcher()->addListener($event, $action);
     }
-
 
 }

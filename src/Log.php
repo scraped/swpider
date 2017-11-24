@@ -21,6 +21,8 @@ class Log
     private static $_output;
     private static $_level;
 
+    private static $_lines = 0;
+
     public static function init($output = null, $verbosityLevelMap = [])
     {
         self::$_output = $output ? : new ConsoleOutput(ConsoleOutput::VERBOSITY_DEBUG);
@@ -38,6 +40,34 @@ class Log
         return self::$_logger;
     }
 
+
+
+    public static function clear()
+    {
+        self::backLine(self::$_lines);
+        self::$_lines = 0;
+    }
+
+    public static function backLine($lines = 1)
+    {
+        for($i = 0; $i < $lines; $i++){
+            echo "\033[1A";
+            echo "\r";
+            echo "\033[K";
+        }
+    }
+
+    public static function writeln(...$arg)
+    {
+
+        if(count($arg)  === 1){
+            $str =  $arg[0] . PHP_EOL;
+        }else{
+            $str = call_user_func_array('sprintf', $arg) . PHP_EOL;
+        }
+        echo $str;
+        self::$_lines++;
+    }
 
 
     public static function __callStatic($name, $arguments)
