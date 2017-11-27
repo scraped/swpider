@@ -106,7 +106,7 @@ class Cache
     public static function setWorker($pid, $config)
     {
         $name = 'workers';
-        $key = $pid;
+        $key = 'worker_' . $pid;
 
         self::$worker = array_merge(self::$worker, $config);
 
@@ -117,7 +117,7 @@ class Cache
     public static function getWorker($pid)
     {
         $name = 'workers';
-        $key = $pid;
+        $key = 'worker_' . $pid;
 
         if(! self::$_client->hExists($name, $key)){
             return false;
@@ -130,12 +130,13 @@ class Cache
 
     public static function getWorkers()
     {
-        $name = 'workers';
+        $name = 'test';
 
         $value = self::client()->hGetAll($name);
 
-        var_dump($value);
+        print_r($value);
 
+        //$value = ['{"pid":25190,"stat":"request","url":"http:\/\/www.xiami.com\/artist\/index\/c\/2"}'];
         return $value;
     }
 
@@ -145,6 +146,13 @@ class Cache
         $key = $pid;
 
         self::client()->hDel($name, $key);
+    }
+
+    public static function delWorkers()
+    {
+        $name = 'workers';
+
+        self::client()->del($name);
     }
 
 

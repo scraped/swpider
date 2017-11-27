@@ -87,6 +87,10 @@ class Swpider extends Command
         Log::debug("connecting queue...");
         Queue::connect($this->spider->getQueueConfig());
 
+        //建立redis链接
+        Cache::connect($this->spider->getRedisConfig());
+        Cache::delWorkers();
+
         $this->dispatcher->dispatch('spider.ready', new SpiderEvent($this));
 
         //将索引地址写入请求队列

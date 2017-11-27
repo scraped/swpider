@@ -170,12 +170,10 @@ Cache::connect();
 
 
 //Cache::hSet('h', 'key1', 'hello');
-$re = Cache::hGetAll("xiami:workers");
+$re = Cache::hGetAll("xiami:test");
 //$re = Redis::get('name');
 
-foreach($re as $item){
-    var_dump($item);
-}
+var_dump($re);
 
 
 

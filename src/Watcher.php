@@ -76,11 +76,13 @@ class Watcher
 
             $workers = Cache::getWorkers();
 
+            //print_r($workers);
+
 
             //数据库状态
             //$data_stat = $this->spider->getStat();
 
-            $this->output($queue_stat, $cache_stat);
+            //$this->output($queue_stat, $cache_stat);
 
             $this->checkMaster();
 

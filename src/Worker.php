@@ -425,9 +425,9 @@ class Worker
         $mem = memory_get_usage();
 
         return [
-            //'statistics' => $this->statistics,
-            //'usage' => $usage,
-            //'memory' => $mem,
+            'statistics' => $this->statistics,
+            'usage' => $usage,
+            'memory' => $mem,
         ];
     }
 
