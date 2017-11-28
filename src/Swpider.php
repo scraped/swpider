@@ -41,6 +41,8 @@ class Swpider extends Command
         $this->setName('run')
             ->setDescription('start a spider job')
             ->addOption('daemon','d', InputOption::VALUE_NONE, 'set daemon mode')
+            ->addOption('test','t', InputOption::VALUE_NONE, 'test mode')
+            ->addOption('ui','u', InputOption::VALUE_NONE, 'display panel')
             ->addOption('single','s', InputOption::VALUE_NONE, 'set single mode')
             ->addArgument('spider', InputArgument::REQUIRED, 'spider job');
     }
@@ -99,13 +101,21 @@ class Swpider extends Command
             Queue::addIndex($url);
         }
 
+        if($this->input->getOption('test')) {
+            $this->createWorker();
+            $this->wait();
+            exit(0);
+        }
+
         //开启爬虫进程
         for($i = 0; $i < $this->spider->task_num; $i++){
             $this->createWorker();
         }
 
-        //开始观察进程
-        $this->createWatcher();
+        if($this->input->getOption('ui')) {
+            //开始观察进程
+            $this->createWatcher();
+        }
 
         //开始子进程监控
         $this->wait();
@@ -118,6 +128,7 @@ class Swpider extends Command
         $worker = new \swoole_process([new Worker($this), 'start']);
         $pid = $worker->start();
         $this->workers[$pid] = $worker;
+        Cache::addWorker($pid);
     }
 
     protected function createWatcher()

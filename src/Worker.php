@@ -41,6 +41,7 @@ class Worker
     {
         $this->master = $master;
         $this->spider = $master->getSpider();
+        $this->spider->setWorker($this);
     }
 
 
@@ -71,7 +72,10 @@ class Worker
 
         $this->setStat(self::S_READY,[
             'pid' => $this->getPid(),
+            'started_at' => $this->time,
         ]);
+
+
 
         //操作队列
         $this->handleQueue();
@@ -84,6 +88,12 @@ class Worker
     {
         //从队列取任务, 如果长时间没有任务，则考虑关闭该进程
         while(1){
+
+            if($this->master->getInput()->getOption('test')){
+                Log::debug("Test Mode");
+                $this->spider->testJob();
+                break;
+            }
 
             $this->setStat(self::S_WAIT);
 
@@ -110,6 +120,94 @@ class Worker
             //不要太快，休息，休息一下
             usleep(self::SLEEP);
         }
+    }
+
+
+    public function testJob($job, callable $callback = null)
+    {
+        $data = [
+            'type' => $job['type']
+        ];
+
+        if(preg_match('#^https?\:\/\/#', $job['url'])){
+            $url = $job['url'];
+        }else{
+            $url = rtrim($this->spider->domain, ' /') . '/' . ltrim($job['url'], ' /');
+        }
+
+        try{
+            Log::debug("Requesting: {$job['url']}");
+
+            $time_start = microtime(true);
+            $response = Request::get($url);
+
+            Log::debug("Requested: {$url}");
+        }catch(\Exception $e){
+            $data['stat'] = 'requested failed';
+            return $data;
+        }
+
+
+        //解析网页内容
+        $rules = $this->spider->getRules();
+        $content = $response->getBody()->getContents();
+        $data['response'] = $response;
+        $data['response_body'] = $content;
+
+
+        //内容转码
+        if($this->spider->from_encode !== $this->spider->to_encode){
+            $content = @mb_convert_encoding($content, strtoupper($this->spider->to_encode), strtoupper($this->spider->from_encode));
+        }
+
+        foreach($rules['url'] as $name=>$option){
+            $regex = $option['regex'];
+            //解析可用链接
+            if(preg_match_all("#{$regex}#iu", $content, $matches)){
+                $data['urls'] = $matches[0];
+            }
+        }
+
+        $fields = Arr::get($rules,'url.'.$job['type'].'.fields', false);
+
+        //解析内容字段
+        if(!empty($fields)){
+            Log::debug("resolver response content ...");
+
+
+            $crawler = new Crawler($content);
+            foreach($fields as $field){
+                Log::debug("resolver field $field ...");
+
+                $rule = $rules['fields'][$field];
+
+                $re = $crawler->filter($rule['selector']);
+
+                Log::debug("field mapped: " . $re->count());
+
+                $value = null;
+                if($re->count() > 0){
+                    if(Arr::get($rule, 'multi', false)){
+                        $value = [];
+                        $re->each(function($node) use ($rule, &$value){
+                            $value[] = isset($rule['group']) ? $this->resolverGroup($node, $rule['group']) : $this->getValue($node, $rule);
+                        });
+                    }else{
+                        $value = isset($rule['group']) ? $this->resolverGroup($re, $rule['group']) : $this->getValue($re, $rule);
+                    }
+                }
+                $data['data'][$field] = $value;
+            }
+
+            Log::debug("resolver response done!");
+        }
+
+        $runtime = microtime(true) - $time_start;
+        Log::debug("Job done at " . date('Y-m-d H:i:s') . ", spend time: $runtime");
+
+        $data['time'] = $runtime;
+
+        call_user_func($callback, $data);
     }
 
 
@@ -342,11 +440,12 @@ class Worker
     {
         $data = [];
         foreach($group as $field => $rule){
+            $new_node = $node;
             if(isset($rule['selector'])){
-                $node = $node->filter($rule['selector']);
+                $new_node = $node->filter($rule['selector']);
             }
 
-            $data[$field] = $this->getValue($node, $rule);
+            $data[$field] = $this->getValue($new_node, $rule);
         }
 
         return $data;

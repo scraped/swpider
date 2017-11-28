@@ -76,13 +76,10 @@ class Watcher
 
             $workers = Cache::getWorkers();
 
-            //print_r($workers);
-
-
             //数据库状态
-            //$data_stat = $this->spider->getStat();
+            $data_stat = $this->spider->getStat();
 
-            //$this->output($queue_stat, $cache_stat);
+            $this->output($queue_stat, $cache_stat, $workers, $data_stat);
 
             $this->checkMaster();
 
@@ -102,19 +99,27 @@ class Watcher
             $cache_stat['urls']);
 
         Log::writeln("");
-        $format = "% 6s % 10s % 6s % 20s %s";     // pid, 状态， 内存， 运行时间， 当前url
-        Log::writeln("\033[7m" . $format . "\033[0m", "pid", "stat", "mem", "uptime", "url");
+        $format = "% 6s % 10s % 6s % 20s % 8s % 8s % 5s %s";     // pid, 状态， 内存， 运行时间， 当前url
+        Log::writeln("\033[7m" . $format . "\033[0m", "pid", "stat", "mem", "time", "req", "suc", "fail", "url");
 
         foreach($workers as $worker){
             $pid = $worker['pid'];
             $stat = $worker['stat'];
-            $mem = round($worker['memory']/1000000,2) . 'm';
-            $uptime = round(($worker['usage']['ru_utime.tv_usec'] + $worker['usage']['ru_stime.tv_usec']) /1000000, 6) . 's';
-            $url = $worker['url'];
+            $mem = round(Arr::get($worker, 'memory', 0)/1000000,2) . 'm';
+            $time = $this->convertTime(time() - $worker['started_at']);
+            $url = Arr::get($worker, 'url', '');
+            $request = Arr::get($worker, 'statistics.request', 0);
+            $success = Arr::get($worker, 'statistics.success', 0);
+            $fail = Arr::get($worker, 'statistics.fail', 0);
 
-            Log::writeln($format, $pid, $stat, $mem, $uptime, $url);
+            Log::writeln($format, $pid, $stat, $mem, $time, $request, $success, $fail, $url);
         }
 
+        Log::writeln("");
+        foreach($extra as $key => $val)
+        {
+            Log::writeln("$key : $val");
+        }
 
     }
 

@@ -66,6 +66,16 @@ use Symfony\Component\EventDispatcher\Event;
 //
 //
 
+$html = file_get_contents("test/xiami.html");
+$regex = "\/artist\/album\-[^\"]*";
+
+preg_match_all("#$regex#iu", $html, $matches);
+
+var_dump($matches);
+
+
+
+
 //Queue::connect();
 ////Queue::put("test");
 //
@@ -165,15 +175,15 @@ use Symfony\Component\EventDispatcher\Event;
 //}
 
 
-
-Cache::connect();
-
-
-//Cache::hSet('h', 'key1', 'hello');
-$re = Cache::hGetAll("xiami:test");
-//$re = Redis::get('name');
-
-var_dump($re);
+//
+//Cache::connect();
+//
+//
+////Cache::hSet('h', 'key1', 'hello');
+//$re = Cache::hGetAll("xiami:test");
+////$re = Redis::get('name');
+//
+//var_dump($re);
 
 
 

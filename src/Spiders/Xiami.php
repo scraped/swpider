@@ -20,7 +20,7 @@ class Xiami extends Spider
 
     protected $indexes = [
         'http://www.xiami.com/artist/index/c/1/type/0',
-        'http://www.xiami.com/artist/index/c/2',
+        'http://www.xiami.com/artist/dz264c5b'
     ];
     public $domain = "http://www.xiami.com";
     public $strict = true;
@@ -40,14 +40,49 @@ class Xiami extends Spider
                     ]
                 ],
                 'multi' => true,
-            ]
+            ],
+            'artist_detail_album' => [
+                'type' => 'css',
+                'selector' => '.album_item100_thread .detail > p.name > a',
+                'group' => [
+                    'name' => [
+                        'selector' => 'strong',
+                        'getter' => 'text'
+                    ],
+                    'href' => [
+                        'getter' => '@href'
+                    ]
+                ],
+                'multi' => true,
+            ],
+            'artist_album_artist' => [
+                'type' => 'css',
+                'selector' => '#artist_profile > .content > p > a',
+                'group' => [
+                    'name' => [
+                        'getter' => 'text'
+                    ],
+                    'href' => [
+                        'getter' => '@href'
+                    ]
+                ],
+            ],
         ],
         'url' => [
             'artist_list' => [
                 'regex' => "\/artist\/index\/c\/\d+\/type\/\d+(\/class\/\d+(\/page\/\d+)?)?",
                 'reentry' => false,
                 'fields' => ['artist'],
-            ]
+            ],
+            'artist_detail' => [
+                'regex' => "\/artist\/[^\/\"]*",
+                'reentry' => 1,
+            ],
+            'artist_albums_list' => [
+                'regex' => "\/artist\/album\-[^\n\"]*",
+                'reentry' => 1,
+                'fields' => ['artist_detail_album', 'artist_album_artist'],
+            ],
 
         ],
     ];
@@ -111,8 +146,54 @@ class Xiami extends Spider
                     ],$insert_data);
                 }
                 break;
+            case 'artist_albums_list':
+                $albums = $data['data']['album'];
+                $artist = $data['data']['album_artist'];
+                $artist_id = str_replace("/artist/", '', $artist['href']);
+                $artist_name = preg_replace("#\([^\(]*\)#ui", '', $artist['name']);
+
+                foreach($albums as $album){
+                    $id = str_replace("/album/", '', $album['href']);
+                    $name = $album['name'];
+
+                    $insert_data = [
+                        'xiami_id' => $id,
+                        'name' => $name,
+                        'artist_id' => $artist_id,
+                        'artist_name' => $artist_name,
+                        'created_at' => time(),
+                        'updated_at' => time(),
+                    ];
+
+                    Database::table('xiami_album')->updateOrInsert([
+                        'xiami_id' => $id,
+                    ],$insert_data);
+                }
+                break;
 
         }
+    }
+
+
+    public function getStat()
+    {
+        $artists = Database::table('xiami_artist')->count();
+        $albums = Database::table('xiami_album')->count();
+
+        return [
+            'artists' => $artists,
+            'album' => $albums,
+        ];
+    }
+
+    public function testJob()
+    {
+        $this->worker->testJob([
+            'type' => 'artist_albums_list',
+            'url' => 'http://www.xiami.com/artist/album-dz264c5b'
+        ], function($data){
+            var_dump($data['data']);
+        });
     }
 
 

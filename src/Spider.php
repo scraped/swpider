@@ -64,6 +64,7 @@ abstract class Spider
     protected $redis_scheme = 'tcp';
 
 
+    protected $worker;
 
 
     public function __construct(Swpider $swpider)
@@ -141,6 +142,10 @@ abstract class Spider
         return $config;
     }
 
+    public function setWorker($worker)
+    {
+        $this->worker = $worker;
+    }
 
     /**
      * 验证请求返回内容

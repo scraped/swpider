@@ -102,6 +102,13 @@ class Cache
         return $re;
     }
 
+    public static function addWorker($pid)
+    {
+        $name = 'worker_index';
+
+        self::client()->sAdd($name, $pid);
+    }
+
 
     public static function setWorker($pid, $config)
     {
@@ -130,13 +137,15 @@ class Cache
 
     public static function getWorkers()
     {
-        $name = 'test';
+        $index_name = 'worker_index';
 
-        $value = self::client()->hGetAll($name);
+        $index = self::client()->sMembers($index_name);
 
-        print_r($value);
+        $value = [];
+        foreach($index as $pid){
+            $value[] = self::getWorker($pid);
+        }
 
-        //$value = ['{"pid":25190,"stat":"request","url":"http:\/\/www.xiami.com\/artist\/index\/c\/2"}'];
         return $value;
     }
 
@@ -150,9 +159,7 @@ class Cache
 
     public static function delWorkers()
     {
-        $name = 'workers';
-
-        self::client()->del($name);
+        self::client()->del('workers', 'worker_index');
     }
 
 
