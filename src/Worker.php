@@ -22,7 +22,7 @@ class Worker
     const S_REQUEST = 'request';
     const S_QUIT = 'quit';
 
-    const SLEEP = 100;
+    const SLEEP = 200;
 
     private $master;
     private $process;
@@ -252,6 +252,7 @@ class Worker
         $content = $response->getBody()->getContents();
         $is_successful = true;
 
+
         //验证返回内容是否合格
         switch($stat = $this->spider->verifyResponse($response, $content)){
             case Spider::RES_LOGIN :
@@ -276,7 +277,7 @@ class Worker
                     }
                     Log::debug("put url: $url");
                     //加入队列
-                    Queue::addUrl($url, $name);
+                    Queue::addUrl($url, $name, Arr::get($option, 'priority', 100));
                     //写入缓存
                     Cache::setUrl($url,Cache::URL_READY);
                 }
@@ -328,6 +329,7 @@ class Worker
                     $this->running = false;
                 }
             }
+
 
             $this->dispatch('spider.response', new SpiderResponseEvent($this->master, $this, $response, $data));
 

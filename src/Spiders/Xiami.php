@@ -5,12 +5,13 @@ namespace Swpider\Spiders;
 use Swpider\Database;
 use Swpider\Spider;
 use Swpider\Log;
+use Illuminate\Support\Arr;
 
 class Xiami extends Spider
 {
     public $name = 'xiami';
 
-    public $task_num = 1;
+    public $task_num = 4;
 
     public $queue_name = 'xiami';
 
@@ -19,8 +20,8 @@ class Xiami extends Spider
     protected $db_password = '123456';
 
     protected $indexes = [
-        'http://www.xiami.com/artist/index/c/1/type/0',
-        'http://www.xiami.com/artist/dz264c5b'
+        //'http://www.xiami.com/artist/index/c/1/type/0',
+        'http://www.xiami.com/artist/album-dz264c5b'
     ];
     public $domain = "http://www.xiami.com";
     public $strict = true;
@@ -43,7 +44,7 @@ class Xiami extends Spider
             ],
             'artist_detail_album' => [
                 'type' => 'css',
-                'selector' => '.album_item100_thread .detail > p.name > a',
+                'selector' => '.albumThread_list div.info > .detail > p.name > a',
                 'group' => [
                     'name' => [
                         'selector' => 'strong',
@@ -69,19 +70,11 @@ class Xiami extends Spider
             ],
         ],
         'url' => [
-            'artist_list' => [
-                'regex' => "\/artist\/index\/c\/\d+\/type\/\d+(\/class\/\d+(\/page\/\d+)?)?",
-                'reentry' => false,
-                'fields' => ['artist'],
-            ],
-            'artist_detail' => [
-                'regex' => "\/artist\/[^\/\"]*",
-                'reentry' => 1,
-            ],
             'artist_albums_list' => [
-                'regex' => "\/artist\/album\-[^\n\"]*",
+                'regex' => "\/artist\/album\-[^\.\n\"\?]*\?d=\&p=\&c=\&page=\d+",
                 'reentry' => 1,
                 'fields' => ['artist_detail_album', 'artist_album_artist'],
+                'priority' => 90,
             ],
 
         ],
@@ -130,6 +123,10 @@ class Xiami extends Spider
 
                 $artists = $data['data']['artist'];
 
+                if(empty($artists)){
+                    return false;
+                }
+
                 foreach($artists as $artist){
                     $id = str_replace("/artist/", '', $artist['href']);
                     $name = preg_replace("#\([^\(]*\)#ui", '', $artist['name']);
@@ -147,8 +144,13 @@ class Xiami extends Spider
                 }
                 break;
             case 'artist_albums_list':
-                $albums = $data['data']['album'];
-                $artist = $data['data']['album_artist'];
+                $albums = $data['data']['artist_detail_album'];
+
+                if(empty($albums)){
+                    return false;
+                }
+
+                $artist = $data['data']['artist_album_artist'];
                 $artist_id = str_replace("/artist/", '', $artist['href']);
                 $artist_name = preg_replace("#\([^\(]*\)#ui", '', $artist['name']);
 
@@ -194,6 +196,26 @@ class Xiami extends Spider
         ], function($data){
             var_dump($data['data']);
         });
+    }
+
+    public function buildJob()
+    {
+        $artists = Database::table('xiami_artist')->get()->all();
+
+        if(empty($artists)){
+            return null;
+        }
+
+        return array_map(function($item){
+
+            return [
+                'url' => "/artist/album-" . $item->xiami_id,
+                'type' => 'artist_albums_list',
+                'pri' => 100,
+            ];
+
+        }, $artists);
+
     }
 
 

@@ -66,12 +66,12 @@ use Symfony\Component\EventDispatcher\Event;
 //
 //
 
-$html = file_get_contents("test/xiami.html");
-$regex = "\/artist\/album\-[^\"]*";
-
-preg_match_all("#$regex#iu", $html, $matches);
-
-var_dump($matches);
+//$html = file_get_contents("test/xiami.html");
+//$regex = "\/artist\/album\-[^\.\n\"\?]*\?d=\&p=\&c=\&page=\d+";
+//
+//preg_match_all("#$regex#iu", $html, $matches);
+//
+//var_dump($matches);
 
 
 
@@ -281,3 +281,18 @@ $i = 0;
 //$val = null;
 //$str = '{"pid":9509,"stat":"wait","url":"http:\/\/www.xiami.com\/artist\/index\/c\/2","statistics":{"request":2,"success":2,"fail":0},"usage":{"ru_oublock":0,"ru_inblock":0,"ru_msgsnd":0,"ru_msgrcv":0,"ru_maxrss":16828,"ru_ixrss":0,"ru_idrss":0,"ru_minflt":1373,"ru_majflt":0,"ru_nsignals":0,"ru_nvcsw":1785,"ru_nivcsw":0,"ru_nswap":0,"ru_utime.tv_usec":21560,"ru_utime.tv_sec":0,"ru_stime.tv_usec":75560,"ru_stime.tv_sec":0},"memory":3176376}';
 //var_dump(json_decode($str, true));
+
+
+Database::connect([
+    'host'      => '127.0.0.1',
+    'port'      => '3306',
+    'database'  => 'swpider',
+    'username'  => 'root',
+    'password'  => '123456',
+    'prefix'   => '',
+]);
+
+$artists = Database::table('xiami_artist')->take(10)->get()->all();
+
+var_dump($artists);
+

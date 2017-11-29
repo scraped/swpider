@@ -41,6 +41,7 @@ class Swpider extends Command
         $this->setName('run')
             ->setDescription('start a spider job')
             ->addOption('daemon','d', InputOption::VALUE_NONE, 'set daemon mode')
+            ->addOption('build','b', InputOption::VALUE_NONE, 'create job build process')
             ->addOption('test','t', InputOption::VALUE_NONE, 'test mode')
             ->addOption('ui','u', InputOption::VALUE_NONE, 'display panel')
             ->addOption('single','s', InputOption::VALUE_NONE, 'set single mode')
@@ -107,6 +108,11 @@ class Swpider extends Command
             exit(0);
         }
 
+        //开启任务生成器
+        if($this->input->getOption('build')) {
+            $this->createJobBuilder();
+        }
+
         //开启爬虫进程
         for($i = 0; $i < $this->spider->task_num; $i++){
             $this->createWorker();
@@ -134,6 +140,12 @@ class Swpider extends Command
     protected function createWatcher()
     {
         $worker = new \swoole_process([new Watcher($this), 'start']);
+        $worker->start();
+    }
+
+    protected function createJobBuilder()
+    {
+        $worker = new \swoole_process([new JobBuilder($this), 'start']);
         $worker->start();
     }
 

@@ -6,6 +6,11 @@ require_once __DIR__ . '/vendor/autoload.php';
 use Swpider\Swpider;
 use Symfony\Component\Console\Application;
 
+// Display errors.
+ini_set('display_errors', 'on');
+// Reporting all.
+error_reporting(E_ALL);
+
 define('ROOT_PATH', __DIR__);
 
 
