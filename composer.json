@@ -1,6 +1,6 @@
 {
     "name": "zengdongbao/swpider",
-    "description": "spider by swoole",
+    "description": "spider with swoole",
     "type": "project",
     "license": "Apache2.0",
     "authors": [

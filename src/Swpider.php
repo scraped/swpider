@@ -18,6 +18,8 @@ class Swpider extends Command
     //主进程id
     public $pid = 0;
 
+    public $version = '0.1';
+
     protected $logger;
     protected $job;
     protected $spider;

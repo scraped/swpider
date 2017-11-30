@@ -224,20 +224,22 @@ use Symfony\Component\EventDispatcher\Event;
 
 
 
-//$client = new \GuzzleHttp\Client([
-//    'timeout' => 5
-//]);
-//
-//try{
-//    $response = $client->get("http://www.163.com");
-//    $body = $response->getBody()->getContents();
-//    $mb_body = mb_convert_encoding($body, 'UTF-8', 'GBK');
-//    var_dump($mb_body);
-//
-//}catch (\GuzzleHttp\Exception\RequestException $e){
-//    //var_dump($e);
-//    var_dump($e->getCode());
-//}
+$client = new \GuzzleHttp\Client([
+    'timeout' => 15
+]);
+
+try{
+    $response = $client->get("http://ip.chinaz.com/getip.aspx", [
+        'proxy' => 'http://106.58.123.176:80',
+    ]);
+    $body = $response->getBody()->getContents();
+    //$body = mb_convert_encoding($body, 'UTF-8', 'GB2312');
+    var_dump($body);
+
+}catch (\GuzzleHttp\Exception\RequestException $e){
+    //var_dump($e);
+    throw $e;
+}
 
 
 //
@@ -283,16 +285,16 @@ $i = 0;
 //var_dump(json_decode($str, true));
 
 
-Database::connect([
-    'host'      => '127.0.0.1',
-    'port'      => '3306',
-    'database'  => 'swpider',
-    'username'  => 'root',
-    'password'  => '123456',
-    'prefix'   => '',
-]);
-
-$artists = Database::table('xiami_artist')->take(10)->get()->all();
-
-var_dump($artists);
+//Database::connect([
+//    'host'      => '127.0.0.1',
+//    'port'      => '3306',
+//    'database'  => 'swpider',
+//    'username'  => 'root',
+//    'password'  => '123456',
+//    'prefix'   => '',
+//]);
+//
+//$artists = Database::table('xiami_artist')->take(10)->get()->all();
+//
+//var_dump($artists);
 
